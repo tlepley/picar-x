@@ -152,6 +152,18 @@ class Picarx(object):
         angle_value  = self.dir_current_angle + self.dir_cali_val
         self.dir_servo_pin.angle(angle_value)
 
+    def set_dir_servo_pin(self, pin):
+        '''
+        Change the hardware pin used for the direction servo at runtime.
+
+        param pin: servo pin identifier (e.g. 'P0', 'P1', ...)
+        '''
+        # replace servo instance with a new Servo bound to the given pin
+        self.dir_servo_pin = Servo(pin)
+        # reapply current calibrated angle
+        angle_value = self.dir_current_angle + self.dir_cali_val
+        self.dir_servo_pin.angle(angle_value)
+
     def cam_pan_servo_calibrate(self, value):
         self.cam_pan_cali_val = value
         self.config_flie.set("picarx_cam_pan_servo", "%s"%value)
@@ -261,7 +273,7 @@ class Picarx(object):
         self.ultrasonic.close()
 
 if __name__ == "__main__":
-    px = Picarx()
+    px = Picarx(servo_pins=['P0', 'P1', 'P3'])
     px.forward(50)
     time.sleep(1)
     px.stop()

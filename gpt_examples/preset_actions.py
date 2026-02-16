@@ -253,7 +253,7 @@ if __name__ == "__main__":
     current_path = os.path.dirname(os.path.abspath(__file__))
     os.chdir(current_path) # change working directory
 
-    my_car = Picarx()
+    my_car = Picarx(servo_pins=['P0', 'P1', 'P3'])
     my_car.reset()
 
     music = Music()

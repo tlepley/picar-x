@@ -87,7 +87,7 @@ class VoiceActiveCar(VoiceAssistant):
         self.too_close = too_close
 
         super().__init__(*args, **kwargs)
-        self.car = Picarx()
+        self.car = Picarx(servo_pins=['P0', 'P1', 'P3'])
         self.led = LED()
         self.action_flow = ActionFlow(self.car)
         self.add_trigger(self.is_too_close)

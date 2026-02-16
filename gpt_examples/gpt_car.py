@@ -57,7 +57,7 @@ SOUND_EFFECT_ACTIONS = ["honking", "start engine"]
 # car init 
 # =================================================================
 try:
-    my_car = Picarx()
+    my_car = Picarx(servo_pins=['P0', 'P1', 'P3'])
     time.sleep(1)
 except Exception as e:
     raise RuntimeError(e)

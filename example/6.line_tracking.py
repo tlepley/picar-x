@@ -15,7 +15,7 @@
 from picarx import Picarx
 from time import sleep
 
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 # px = Picarx(grayscale_pins=['A0', 'A1', 'A2'])
 
 # Please run ./calibration/grayscale_calibration.py to Auto calibrate grayscale values

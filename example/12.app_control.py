@@ -23,7 +23,7 @@ sc.set_type('Picarx')
 sc.start()
 
 # init picarx
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 speed = 0
 
 current_line_state = None

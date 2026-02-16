@@ -15,7 +15,7 @@ Manual modification:
 from picarx import Picarx
 from time import sleep
 
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 # px = Picarx(grayscale_pins=['A0', 'A1', 'A2'])
 # manual modify reference value
 px.set_cliff_reference([200, 200, 200])

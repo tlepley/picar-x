@@ -5,7 +5,7 @@ import time
 if __name__ == "__main__":
     try:
         # init picarx
-        px = Picarx()
+        px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 
         # test motor
         px.forward(30)

@@ -2,7 +2,7 @@ from picarx import Picarx
 from picarx.stt import Vosk
 import time
 
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 stt = Vosk(language="en-us")
 
 

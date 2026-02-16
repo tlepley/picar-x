@@ -29,7 +29,7 @@ Press key to call the function(non-case sensitive):
 '''
 
 
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 
 def take_photo():
     _time = strftime('%Y-%m-%d-%H-%M-%S',localtime(time()))

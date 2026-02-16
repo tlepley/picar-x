@@ -2,7 +2,7 @@ from picarx import Picarx
 from time import sleep
 from vilib import Vilib
 
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 
 def clamp_number(num,a,b):
   return max(min(num, max(a, b)), min(a, b))

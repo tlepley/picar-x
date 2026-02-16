@@ -26,7 +26,7 @@ Press keys to control PiCar-X:
 # -----------------------
 # Init
 # -----------------------
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 
 tts = Pico2Wave()
 tts.set_lang("en-US")

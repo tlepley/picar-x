@@ -4,7 +4,7 @@ import threading
 import readchar 
 import os
 
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 config_path = px.CONFIG
 
 manual = f'''\

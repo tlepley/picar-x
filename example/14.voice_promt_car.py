@@ -7,7 +7,7 @@ import time
 # tts = Pico2Wave()
 # tts.set_lang('en-US')  # Options: en-US, en-GB, de-DE, es-ES, fr-FR, it-IT
 
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 tts = Espeak()
 
 # Quick hello (test)

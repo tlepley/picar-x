@@ -15,7 +15,7 @@ tts.set_model("en_US-amy-low")  # use the voice model you installed
 # tts.set_voice("alloy")            # choose a voice
 
 # === PiCar-X Setup ===
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 
 # Quick hello (sanity check)
 tts.say("Hello! I'm PiCar-X speaking with Piper.")

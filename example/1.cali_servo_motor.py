@@ -17,7 +17,7 @@ manual = '''
                                       
 '''    
 
-px = Picarx()
+px = Picarx(servo_pins=['P0', 'P1', 'P3'])
 px_power = 30
 
 servo_num = 0
@@ -33,6 +33,10 @@ def servos_test():
     px.set_dir_servo_angle(-30)
     sleep(0.5)
     px.set_dir_servo_angle(30)
+    sleep(0.5)
+    px.set_dir_servo_angle(-10)
+    sleep(0.5)
+    px.set_dir_servo_angle(10)
     sleep(0.5)
     px.set_dir_servo_angle(0)
     sleep(0.5)
