@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Backward-compatible entry point.
 
-This keeps `ros2 run picarx_ros2 picarx_node` working by forwarding
+This keeps `ros2 run picarx_local_ros2 picarx_node` working by forwarding
 to the driver node main function.
 """
 

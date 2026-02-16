@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>picarx_ros2</name>
+  <name>picarx_remote_ros2</name>
   <version>0.1.0</version>
-  <description>ROS 2 Humble integration nodes for PI-CAR-X using the existing picarx Python API.</description>
+  <description>PI-CAR-X remote applications ROS 2 package.</description>
   <maintainer email="you@example.com">picar-x user</maintainer>
   <license>GPL-3.0-or-later</license>
 
@@ -13,6 +13,7 @@
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

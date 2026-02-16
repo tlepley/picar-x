@@ -5,7 +5,7 @@ from launch_ros.actions import Node
 def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         Node(
-            package='picarx_ros2',
+            package='picarx_local_ros2',
             executable='picarx_driver_node',
             name='picarx_driver_node',
             output='screen',
@@ -23,7 +23,7 @@ def generate_launch_description() -> LaunchDescription:
             ],
         ),
         Node(
-            package='picarx_ros2',
+            package='picarx_local_ros2',
             executable='picarx_safety_node',
             name='picarx_safety_node',
             output='screen',
