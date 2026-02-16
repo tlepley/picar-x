@@ -29,6 +29,10 @@ ros2 run picarx_local_ros2 picarx_driver_node
 ros2 run picarx_local_ros2 picarx_safety_node
 ```
 
+Hardware launch important parameter:
+
+- `direction_servo_pin` (default `P3`)
+
 ## Run on Jetson (remote/apps)
 
 Launch any converted example app:
@@ -66,8 +70,45 @@ Local hardware publishes sensors:
 
 - `/picarx/distance`
 - `/picarx/grayscale`
+- `/picarx/calibration/state` (`[dir_offset, pan_offset, tilt_offset, left_dir, right_dir]`)
+
+## Remote calibration (persisted on PI-CAR-X)
+
+Calibration values are stored locally on the PI-CAR-X through the existing `picarx` config file.
+You can apply calibration remotely from Jetson with:
+
+```bash
+ros2 run picarx_remote_ros2 picarx_calibration_cli --show
+ros2 run picarx_remote_ros2 picarx_calibration_cli --set-motor -1 1 --save --show
+ros2 run picarx_remote_ros2 picarx_calibration_cli --set-servo 0.0 0.0 0.0 --save --show
+ros2 run picarx_remote_ros2 picarx_calibration_cli --load --show
+ros2 run picarx_remote_ros2 picarx_calibration_cli --reset --show
+```
+
+Graphical tool (tkinter):
+
+```bash
+ros2 run picarx_remote_ros2 picarx_calibration_gui
+```
+
+Driver endpoints used by the CLI:
+
+- Topics:
+  - `/picarx/calibration/servo_offsets` (`std_msgs/Float32MultiArray`, 3 values)
+  - `/picarx/calibration/motor_directions` (`std_msgs/Int32MultiArray`, 2 values, each `-1` or `1`)
+- Services:
+  - `/picarx/calibration/get` (`std_srvs/Trigger`)
+  - `/picarx/calibration/save` (`std_srvs/Trigger`)
+  - `/picarx/calibration/load` (`std_srvs/Trigger`)
+  - `/picarx/calibration/reset` (`std_srvs/Trigger`)
+
+Calibration file location (PI-CAR-X local):
+
+- Default path used by this ROS setup: `~/.config/picar-x/picar-x.conf`
+- If the file does not exist, `picarx` uses defaults and creates it on first write/save.
 
 ## Notes
 
 - Keep `picarx` and required runtime dependencies installed in each machine environment as needed.
 - Remote examples that use camera/STT/TTS/LLM still require those dependencies on the Jetson side.
+- `picarx_calibration_gui` requires tkinter (`_tkinter` module) in the active Python environment.

@@ -24,6 +24,7 @@ class PicarxHardwareAdapter:
         max_speed: float,
         max_steering_deg: float,
         steering_gain_deg_per_rad_s: float,
+        direction_servo_pin: str,
         config_path: str,
         ultrasonic_trig_pin: str,
         ultrasonic_echo_pin: str,
@@ -31,12 +32,16 @@ class PicarxHardwareAdapter:
         self.max_speed = float(max_speed)
         self.max_steering_deg = float(max_steering_deg)
         self.steering_gain = float(steering_gain_deg_per_rad_s)
+        self._config_path = os.path.expanduser(config_path)
+        self._ultrasonic_trig_pin = ultrasonic_trig_pin
+        self._ultrasonic_echo_pin = ultrasonic_echo_pin
+        self._direction_servo_pin = direction_servo_pin
 
-        config_path = os.path.expanduser(config_path)
-        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
         self._px = Picarx(
-            config=config_path,
-            ultrasonic_pins=[ultrasonic_trig_pin, ultrasonic_echo_pin],
+            servo_pins=['P0', 'P1', self._direction_servo_pin],
+            config=self._config_path,
+            ultrasonic_pins=[self._ultrasonic_trig_pin, self._ultrasonic_echo_pin],
         )
         self._current_speed = 0.0
         self._px.stop()
@@ -82,3 +87,42 @@ class PicarxHardwareAdapter:
 
     def get_grayscale(self) -> List[float]:
         return [float(v) for v in self._px.get_grayscale_data()]
+
+    def set_servo_offsets(self, dir_offset: float, cam_pan_offset: float, cam_tilt_offset: float) -> None:
+        self._px.dir_servo_calibrate(float(dir_offset))
+        self._px.cam_pan_servo_calibrate(float(cam_pan_offset))
+        self._px.cam_tilt_servo_calibrate(float(cam_tilt_offset))
+
+    def set_motor_directions(self, left: int, right: int) -> None:
+        left = 1 if int(left) >= 0 else -1
+        right = 1 if int(right) >= 0 else -1
+        self._px.motor_direction_calibrate(1, left)
+        self._px.motor_direction_calibrate(2, right)
+
+    def save_calibration(self) -> None:
+        # Calibration setters persist immediately through picarx fileDB.
+        return
+
+    def load_calibration(self) -> None:
+        self._reconnect_hardware()
+
+    def reset_calibration(self) -> None:
+        self.set_servo_offsets(0.0, 0.0, 0.0)
+        self.set_motor_directions(1, 1)
+
+    def get_calibration_state(self) -> List[float]:
+        return [
+            float(self._px.dir_cali_val),
+            float(self._px.cam_pan_cali_val),
+            float(self._px.cam_tilt_cali_val),
+            float(self._px.cali_dir_value[0]),
+            float(self._px.cali_dir_value[1]),
+        ]
+
+    def _reconnect_hardware(self) -> None:
+        self.stop()
+        self._px = Picarx(
+            servo_pins=['P0', 'P1', self._direction_servo_pin],
+            config=self._config_path,
+            ultrasonic_pins=[self._ultrasonic_trig_pin, self._ultrasonic_echo_pin],
+        )

@@ -17,6 +17,7 @@ def generate_launch_description() -> LaunchDescription:
                     'cmd_timeout_sec': 0.6,
                     'sensor_rate_hz': 10.0,
                     'config_path': '~/.config/picar-x/picar-x.conf',
+                    'direction_servo_pin': 'P3',
                     'ultrasonic_trig_pin': 'D0',
                     'ultrasonic_echo_pin': 'D1',
                 }
