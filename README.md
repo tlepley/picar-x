@@ -11,7 +11,7 @@ The goal of this fork is to integrate PI-CAR-X into a ROS 2 environment while pr
 - ROS-converted execution paths for the original examples
 - Remote calibration and remote control workflows over ROS topics and services
 
-The ROS workspace is documented in [`ros/README.md`](/home/gotcha/git/picar-x/ros/README.md).
+The ROS workspace is documented in [`ros/README.md`](ros/README.md).
 
 ## Project Layout
 

@@ -23,6 +23,7 @@ setup(
             'picarx_node = picarx_local_ros2.picarx_node:main',
             'picarx_driver_node = picarx_local_ros2.driver_node:main',
             'picarx_safety_node = picarx_local_ros2.safety_node:main',
+            'picarx_camera_control_cli = picarx_local_ros2.camera_control_cli:main',
         ],
     },
 )

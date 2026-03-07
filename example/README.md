@@ -41,9 +41,9 @@ python3 example/6.line_tracking.py
 This repository also provides a ROS 2 integration layer.
 
 - Original examples in this directory: direct Python / non-ROS mode
-- ROS version: remote/local split under [`ros/`](/home/gotcha/git/picar-x/ros)
+- ROS version: remote/local split under [`ros/`](../ros)
 
-If you want to use the ROS version, see [`ros/README.md`](/home/gotcha/git/picar-x/ros/README.md).
+If you want to use the ROS version, see [`ros/README.md`](../ros/README.md).
 
 ## Upstream Documentation
 

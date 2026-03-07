@@ -39,6 +39,7 @@ setup(
             'picarx_example_runner_node = picarx_remote_ros2.remote_apps.example_runner_node:main',
             'picarx_calibration_cli = picarx_remote_ros2.remote_apps.calibration_cli:main',
             'picarx_calibration_gui = picarx_remote_ros2.remote_apps.calibration_gui:main',
+            'picarx_video_viewer_node = picarx_remote_ros2.remote_apps.video_viewer_node:main',
         ],
     },
 )

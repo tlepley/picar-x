@@ -7,8 +7,8 @@ This workspace is split into two ROS 2 packages:
 
 The recommended reading order is:
 
-1. [`LOCAL_PI_CAR_X.md`](/home/gotcha/git/picar-x/ros/LOCAL_PI_CAR_X.md)
-2. [`REMOTE_HOST.md`](/home/gotcha/git/picar-x/ros/REMOTE_HOST.md)
+1. [`LOCAL_PI_CAR_X.md`](LOCAL_PI_CAR_X.md)
+2. [`REMOTE_HOST.md`](REMOTE_HOST.md)
 
 ## Quick Summary
 
@@ -16,8 +16,10 @@ The PI-CAR-X board owns the hardware:
 
 - `picarx_local_ros2`
 - publishes sensors
+- publishes the camera stream on `/picarx/camera/image_raw`
 - receives safe motion and camera commands
 - stores calibration locally in `~/.config/picar-x/picar-x.conf`
+- applies a default local camera tuning profile in `picarx_hardware.launch.py`
 
 The remote machine owns the application logic:
 
@@ -43,6 +45,36 @@ Local hardware publishes sensors:
 - `/picarx/distance`
 - `/picarx/grayscale`
 - `/picarx/calibration/state`
+- `/picarx/camera/image_raw`
+
+## Camera Stream
+
+The camera stream is published by the local PI-CAR-X side on:
+
+- `/picarx/camera/image_raw`
+
+The local camera node also exposes stream control services:
+
+- `/picarx_camera_publisher_node/start`
+- `/picarx_camera_publisher_node/stop`
+
+The default local hardware launch also applies a practical camera tuning profile for `libcamerasrc`:
+
+- auto exposure enabled
+- `exposure-value=1.5`
+- `awb-enable=true`
+- `brightness=0.1`
+- `contrast=1.15`
+
+The detailed explanation and tuning notes are documented in [`LOCAL_PI_CAR_X.md`](LOCAL_PI_CAR_X.md).
+
+For a simple remote viewer, use:
+
+```bash
+ros2 launch picarx_remote_ros2 view_video_stream.launch.py
+```
+
+That viewer requests camera start on launch and camera stop on exit by default.
 
 ## Remote Calibration Tools
 
@@ -67,6 +99,6 @@ Two deployment modes are supported:
 - local-only ROS on the PI-CAR-X: standard ROS 2 discovery is enough
 - remote host + PI-CAR-X: prefer Fast DDS Discovery Server
 
-The local-only workflow is documented in [`LOCAL_PI_CAR_X.md`](/home/gotcha/git/picar-x/ros/LOCAL_PI_CAR_X.md).
+The local-only workflow is documented in [`LOCAL_PI_CAR_X.md`](LOCAL_PI_CAR_X.md).
 
-The remote multi-machine workflow, including Discovery Server setup, is documented in [`REMOTE_HOST.md`](/home/gotcha/git/picar-x/ros/REMOTE_HOST.md).
+The remote multi-machine workflow, including Discovery Server setup, is documented in [`REMOTE_HOST.md`](REMOTE_HOST.md).

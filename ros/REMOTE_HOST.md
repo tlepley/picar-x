@@ -11,6 +11,7 @@ It covers:
 - configuring DDS domain settings
 - setting up a Fast DDS Discovery Server for reliable multi-machine discovery
 - verifying connectivity with the PI-CAR-X board
+- viewing the camera stream remotely
 - launching obstacle avoidance remotely
 
 ## Install ROS 2 Humble on Ubuntu
@@ -118,6 +119,32 @@ Quick remote calibration check:
 ```bash
 ros2 run picarx_remote_ros2 picarx_calibration_cli --show
 ```
+
+## View the camera stream remotely
+
+The PI-CAR-X camera stream is published on:
+
+- `/picarx/camera/image_raw`
+
+The local camera node also exposes stream control services:
+
+- `/picarx_camera_publisher_node/start`
+- `/picarx_camera_publisher_node/stop`
+
+The simplest remote viewer is:
+
+```bash
+cd ~/picar-x/ros
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+export ROS_DOMAIN_ID=99
+unset ROS_LOCALHOST_ONLY
+export ROS_DISCOVERY_SERVER=<REMOTE_HOST_IP>:11811
+ros2 launch picarx_remote_ros2 view_video_stream.launch.py
+```
+
+By default, `view_video_stream.launch.py` requests camera start when the viewer launches and requests camera stop when it exits.
 
 ## Launch obstacle avoidance remotely
 

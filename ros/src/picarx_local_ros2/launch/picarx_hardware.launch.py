@@ -37,4 +37,26 @@ def generate_launch_description() -> LaunchDescription:
                 }
             ],
         ),
+        Node(
+            package='picarx_camera_cpp',
+            executable='picarx_camera_publisher_node',
+            name='picarx_camera_publisher_node',
+            output='screen',
+            parameters=[
+                {
+                    'camera_source': '',
+                    'camera_backend': 'auto',
+                    'gstreamer_pipeline': '',
+                    'camera_auto_exposure': True,
+                    'camera_controls': 'exposure-value=1.5 awb-enable=true brightness=0.1 contrast=1.15',
+                    'start_stream_on_launch': False,
+                    'image_topic': '/picarx/camera/image_raw',
+                    'frame_id': 'picarx_camera',
+                    'publish_rate_hz': 10.0,
+                    'width': 640,
+                    'height': 480,
+                    'fps': 30.0,
+                }
+            ],
+        ),
     ])

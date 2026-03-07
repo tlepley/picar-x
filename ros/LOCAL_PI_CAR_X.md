@@ -4,19 +4,19 @@ This guide is for the PI-CAR-X board itself.
 
 It covers:
 
-- initial ROS 2 Humble build on Raspberry Pi OS
-- verification that the local ROS nodes are available
-- DDS domain configuration
-- local validation of calibration and obstacle avoidance
-- remote operation preparation when a separate ROS host is used
+- ROS 2 Humble compilation on Raspberry Pi OS
+- local PI-CAR-X ROS package compilation
+- local validation of nodes, calibration, camera stream, and obstacle avoidance
 
 ## Why Raspberry Pi OS
 
 Raspberry Pi OS is preferred on the PI-CAR-X board because it is the native OS for the platform and usually gives the least friction with the hardware stack.
 
-## Build ROS 2 Humble on Raspberry Pi OS
+## 1. ROS 2 compilation
 
-ROS 2 Humble does not work well with the default Python 3.13 found on newer Raspberry Pi OS images. Use Python 3.10 in a dedicated `pyenv` environment.
+### Build ROS 2 Humble on Raspberry Pi OS
+
+ROS 2 Humble does not work well with the default Python 3.13+ found on newer Raspberry Pi OS images. Use Python 3.10 in a dedicated `pyenv` environment.
 
 Install `pyenv`:
 
@@ -101,19 +101,24 @@ Build a practical Humble subset:
 cd ~/ros2_humble
 colcon build \
   --merge-install \
-  --packages-up-to \
-    ros2launch \
-    launch \
-    launch_ros \
+  --packages-select \
     ros2cli \
+    ros2multicast \
+    ros2launch \
     ros2topic \
     ros2node \
     ros2run \
     ros2pkg \
     ros2service \
     ros2param \
+    launch \
+    launch_ros \
     demo_nodes_cpp \
     demo_nodes_py \
+    rmw_fastrtps_cpp \
+    rmw_fastrtps_dynamic_cpp \
+    rmw_fastrtps_shared_cpp \
+    sensor_msgs \
   --cmake-args \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_TESTING=OFF
@@ -136,16 +141,78 @@ pyenv activate ros-humble
 source ~/ros2_humble/install/setup.bash
 ```
 
-## Build the local PI-CAR-X package
+## 2. Local PI-CAR-X project compilation
+
+### Video stream dependencies
+
+In this project, the local camera stream currently depends on the Raspberry Pi camera stack (`libcamera`), GStreamer support for `libcamerasrc`, and OpenCV with GStreamer-enabled `VideoCapture`.
+
+Install the required system packages on Raspberry Pi OS:
+
+```bash
+sudo apt update
+sudo apt install -y \
+  libcamera0 \
+  libcamera-tools \
+  gstreamer1.0-tools \
+  gstreamer1.0-libcamera \
+  gstreamer1.0-plugins-base \
+  gstreamer1.0-plugins-good \
+  python3-opencv
+```
+
+Verify that `libcamerasrc` is available:
+
+```bash
+gst-inspect-1.0 libcamerasrc
+```
+
+The local camera publisher is implemented in:
+
+- `ros/src/picarx_camera_cpp/src/picarx_camera_publisher_node.cpp`
+
+### Global video pipeline
+
+The current video path is:
+
+1. the Raspberry Pi camera sensor produces frames
+2. `libcamera` controls the sensor locally on the PI-CAR-X
+3. `libcamerasrc` exposes the camera feed inside a GStreamer pipeline
+4. `picarx_camera_cpp` opens that pipeline through `cv::VideoCapture`
+5. frames are read into `cv::Mat`
+6. the node converts each frame to `sensor_msgs/msg/Image`
+7. ROS publishes the stream on `/picarx/camera/image_raw`
+8. the remote host subscribes to `/picarx/camera/image_raw`
+
+The default pipeline built by the local camera node is conceptually:
+
+```text
+libcamerasrc ... ! video/x-raw,width=...,height=...,framerate=... ! videoconvert ! video/x-raw,format=BGR ! appsink
+```
+
+This means:
+
+- camera tuning issues such as brightness, contrast, exposure, or noise are local PI-side issues
+- ROS is only used after the frame has already been captured and converted into a ROS image message
+
+The local camera publisher also exposes stream control services:
+
+- `/picarx_camera_publisher_node/start`
+- `/picarx_camera_publisher_node/stop`
+
+### Build the local PI-CAR-X package
+
+The local hardware launch also starts the camera publisher from `picarx_camera_cpp`, so build both packages:
 
 ```bash
 cd ~/git/picar-x/ros
 source ~/ros2_humble/install/setup.bash
-PYTHONNOUSERSITE=1 colcon build --packages-select picarx_local_ros2
+PYTHONNOUSERSITE=1 colcon build --packages-select picarx_camera_cpp picarx_local_ros2
 source install/setup.bash
 ```
 
-## Configure the DDS domain
+
+### Configure the DDS domain
 
 Use the same domain as the remote ROS host:
 
@@ -156,7 +223,7 @@ unset ROS_LOCALHOST_ONLY
 
 This can also be added to your shell startup if that matches your deployment.
 
-## Remote operation from another machine
+### Remote operation from another machine
 
 If you run the application logic from another ROS host, local-only ROS usage remains unchanged, but multi-machine discovery should preferably use a Fast DDS Discovery Server instead of relying on multicast.
 
@@ -182,7 +249,30 @@ ros2 launch picarx_local_ros2 picarx_hardware.launch.py
 
 If you only work locally on the PI-CAR-X itself, `ROS_DISCOVERY_SERVER` is not required.
 
-## Launch and verify local nodes
+### Default camera tuning
+
+The local hardware launch includes a default camera tuning profile for `libcamerasrc`.
+
+It enables auto exposure and applies a conservative brightness and contrast correction that worked better than the raw defaults on this hardware:
+
+- `camera_auto_exposure=True`
+- `camera_controls='exposure-value=1.5 awb-enable=true brightness=0.1 contrast=1.15'`
+
+This tuning is defined in:
+
+- `ros/src/picarx_local_ros2/launch/picarx_hardware.launch.py`
+
+It is intended as a practical compromise:
+
+- brighter than the stock camera output
+- less noisy than more aggressive exposure settings
+- still dependent on the actual ambient light
+
+If the image is still too dark, improve the real scene lighting first. Software tuning can only trade brightness against noise; it cannot compensate for a weak sensor in poor light.
+
+## 3. Local tests
+
+### Launch and verify local nodes
 
 Launch the hardware stack:
 
@@ -219,7 +309,7 @@ sleep 2
 ros2 node list
 ```
 
-## Test local calibration
+### Test local calibration
 
 Check calibration state:
 
@@ -245,7 +335,24 @@ Calibration is stored locally in:
 ~/.config/picar-x/picar-x.conf
 ```
 
-## Test obstacle avoidance locally
+### Test the camera stream locally
+
+Check that the camera node and stream are available:
+
+```bash
+ros2 node list
+ros2 topic list | grep picarx/camera
+ros2 topic hz /picarx/camera/image_raw
+```
+
+You can also stop and restart the local camera stream explicitly:
+
+```bash
+ros2 service call /picarx_camera_publisher_node/stop std_srvs/srv/Trigger
+ros2 service call /picarx_camera_publisher_node/start std_srvs/srv/Trigger
+```
+
+### Test obstacle avoidance locally
 
 If you want a local end-to-end test on the same PI-CAR-X machine:
 

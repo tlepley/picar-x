@@ -13,11 +13,14 @@ from ..remote_lib.remote_picarx import RemotePicarx
 
 
 def _install_picarx_monkey_patch() -> None:
-    try:
-        import picarx  # type: ignore
-    except Exception:
-        picarx = types.ModuleType('picarx')
-        sys.modules['picarx'] = picarx
+    repo_root = Path(__file__).resolve().parents[5]
+    picarx_source_dir = repo_root / 'picarx'
+
+    picarx = types.ModuleType('picarx')
+    picarx.__file__ = str(picarx_source_dir / '__init__.py')
+    picarx.__package__ = 'picarx'
+    picarx.__path__ = [str(picarx_source_dir)]
+    sys.modules['picarx'] = picarx
 
     setattr(picarx, 'Picarx', RemotePicarx)
 
@@ -25,16 +28,15 @@ def _install_picarx_monkey_patch() -> None:
     setattr(picarx_picarx, 'Picarx', RemotePicarx)
     sys.modules['picarx.picarx'] = picarx_picarx
 
-    # Avoid hardware reset calls on remote side.
-    try:
-        import picarx.utils as picarx_utils  # type: ignore
+    # Avoid hardware reset calls on the remote-control side.
+    picarx_utils = types.ModuleType('picarx.utils')
 
-        def _noop_reset_mcu():
-            return
+    def _noop_reset_mcu():
+        return
 
-        setattr(picarx_utils, 'reset_mcu', _noop_reset_mcu)
-    except Exception:
-        pass
+    setattr(picarx_utils, 'reset_mcu', _noop_reset_mcu)
+    setattr(picarx, 'utils', picarx_utils)
+    sys.modules['picarx.utils'] = picarx_utils
 
 
 def main() -> None:
