@@ -1,85 +1,89 @@
-# Picar-X
+# PI-CAR-X ROS Fork
 
-Picar-X Python library for Raspberry Pi.
+This repository is a fork of the SunFounder PI-CAR-X 2.1.x codebase.
 
-## Links
+The goal of this fork is to integrate PI-CAR-X into a ROS 2 environment while preserving the original Python project structure and examples. The original SunFounder examples are still kept in their original directories. They were not removed or rewritten in place. Instead, they were adapted for ROS usage through the ROS packages under [`ros/`](./ros).
 
-- Docs: <https://docs.sunfounder.com/projects/picar-x-v20/en/latest/>
-- Robot Hat: <https://docs.sunfounder.com/projects/robot-hat-v4/en/latest/>
-- Forum: <https://forum.sunfounder.com/>
-- Sunfounder: <https://www.sunfounder.com/>
+## What This Fork Adds
 
-## Installation
+- A ROS 2 local hardware package for the PI-CAR-X board
+- A ROS 2 remote application package for external compute nodes such as an NVIDIA Jetson
+- ROS-converted execution paths for the original examples
+- Remote calibration and remote control workflows over ROS topics and services
 
- > **Note**
-  You also need to install robot_hat, vilib, sunfounder_controller and other dependent libraries.\
-  <https://docs.sunfounder.com/projects/picar-x-v20/en/latest/python/python_start/install_all_modules.html>
+The ROS workspace is documented in [`ros/README.md`](/home/gotcha/git/picar-x/ros/README.md).
 
-```bash
-# Install robot_hat
-git clone --depth 1 -b 2.5.x https://github.com/sunfounder/robot-hat.git
-cd robot-hat
-sudo python3 install.py
+## Project Layout
 
-# Install vilib
-git clone --depth 1 https://github.com/sunfounder/vilib.git
-cd vilib
-sudo python3 install.py
+- `example/`: original SunFounder example scripts, preserved
+- `picarx/`: original Python library codebase
+- `ros/src/picarx_local_ros2`: ROS 2 package for hardware-side nodes running on the PI-CAR-X board
+- `ros/src/picarx_remote_ros2`: ROS 2 package for remote applications running on another machine
 
-# Install picar-x
-git clone -b 2.1.x https://github.com/sunfounder/picar-x.git
-cd picar-x
-sudo pip3 install . --break
-```
+## Using The Original SunFounder Version
 
-## Debug
+If you want the original non-ROS usage, keep using the repository as a standard SunFounder-style Python project.
 
-Debug command records
+Typical workflow:
 
 ```bash
-cd ~/picar-x && sudo pip3 install . --break --no-deps --no-build-isolation
+cd ~/git/picar-x
+python3 -m pip install -e .
+python3 example/4.avoiding_obstacles.py
 ```
 
-## Debug records
+This mode is useful if you want to run the original examples directly on the PI-CAR-X without ROS.
+
+## Using The ROS Version
+
+If you want PI-CAR-X to operate as part of a ROS 2 system:
+
+- Run `picarx_local_ros2` on the PI-CAR-X board
+- Run `picarx_remote_ros2` on the remote machine that hosts the application logic
+
+Typical hardware-side workflow on the PI-CAR-X:
 
 ```bash
-sudo pip3 uninstall picar-x --break -y && cd ~/picar-x && sudo pip3 install . --break --no-deps --no-build-isolation
-sudo pip3 uninstall robot_hat --break -y && cd ~/robot-hat && sudo pip3 install . --break --no-deps --no-build-isolation
-sudo python3 ~/picar-x/examples/14_voice_active_car_gpt.py
+cd ~/git/picar-x/ros
+source ~/ros2_humble/install/setup.bash
+PYTHONNOUSERSITE=1 colcon build --packages-select picarx_local_ros2
+source install/setup.bash
+ros2 launch picarx_local_ros2 picarx_hardware.launch.py
 ```
 
-----------------------------------------------
+Typical remote-side workflow on the Jetson:
 
-## About SunFounder
+```bash
+cd ~/git/picar-x/ros
+source ~/ros2_humble/install/setup.bash
+export ROS_DOMAIN_ID=99
+PYTHONNOUSERSITE=1 colcon build --packages-select picarx_remote_ros2
+source install/setup.bash
+ros2 launch picarx_remote_ros2 run_4_avoiding_obstacles.launch.py
+```
 
-SunFounder is a technology company focused on Raspberry Pi and Arduino open source community development. Committed to the promotion of open source culture, we strives to bring the fun of electronics making to people all around the world and enable everyone to be a maker. Our products include learning kits, development boards, robots, sensor modules and development tools. In addition to high quality products, SunFounder also offers video tutorials to help you make your own project. If you have interest in open source or making something cool, welcome to join us!
+Adjust `ROS_DOMAIN_ID` to match the PI-CAR-X side.
 
-----------------------------------------------
+## Why The Original Examples Were Preserved
+
+The original examples remain useful for:
+
+- validating SunFounder-style direct hardware behavior
+- comparing original behavior with ROS-based behavior
+- debugging hardware independently from ROS
+
+The ROS packages do not replace the original example files. They provide a ROS execution layer around them so the project can be used both as:
+
+- the original SunFounder Python project
+- a ROS 2-integrated robotics platform
+
+## Upstream Reference
+
+- SunFounder documentation: <https://docs.sunfounder.com/projects/picar-x-v20/en/latest/>
+- Robot Hat documentation: <https://docs.sunfounder.com/projects/robot-hat-v4/en/latest/>
+- SunFounder forum: <https://forum.sunfounder.com/>
+- SunFounder website: <https://www.sunfounder.com/>
 
 ## License
 
-This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied wa rranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
-{Repository Name} comes with ABSOLUTELY NO WARRANTY; for details run ./show w. This is free software, and you are welcome to redistribute it under certain conditions; run ./show c for details.
-
-SunFounder, Inc., hereby disclaims all copyright interest in the program '{Repository Name}' (which makes passes at compilers).
-
-Mike Huang, 21 August 2015
-
-Mike Huang, Chief Executive Officer
-
-Email: service@sunfounder.com, support@sunfounder.com
-
-----------------------------------------------
-
-## Contact us
-
-website:
-    www.sunfounder.com
-
-E-mail:
-    service@sunfounder.com, support@sunfounder.com
+This repository remains under the original upstream license terms unless stated otherwise in specific files.

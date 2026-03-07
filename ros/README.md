@@ -1,61 +1,33 @@
 # ROS 2 split architecture for PI-CAR-X
 
-This workspace is now split into two explicit domains:
+This workspace is split into two ROS 2 packages:
 
-- `ros/src/picarx_local_ros2`: nodes that run on the PI-CAR-X board and access hardware.
-- `ros/src/picarx_remote_ros2`: apps/examples that run remotely (Jetson/Ubuntu) and control the car through ROS topics.
+- `ros/src/picarx_local_ros2`: hardware-side nodes running on the PI-CAR-X board
+- `ros/src/picarx_remote_ros2`: application-side nodes running on a remote ROS host
 
-The old mixed package `ros/src/picarx_ros2` has been removed from this workspace.
+The recommended reading order is:
 
-## Build
+1. [`LOCAL_PI_CAR_X.md`](/home/gotcha/git/picar-x/ros/LOCAL_PI_CAR_X.md)
+2. [`REMOTE_HOST.md`](/home/gotcha/git/picar-x/ros/REMOTE_HOST.md)
 
-```bash
-cd /home/gotcha/git/picar-x/ros
-source ~/ros2_humble/install/setup.bash
-PYTHONNOUSERSITE=1 colcon build --packages-select picarx_local_ros2 picarx_remote_ros2
-source install/setup.bash
-```
+## Quick Summary
 
-## Run on PI-CAR-X (local/hardware)
+The PI-CAR-X board owns the hardware:
 
-```bash
-ros2 launch picarx_local_ros2 picarx_hardware.launch.py
-```
+- `picarx_local_ros2`
+- publishes sensors
+- receives safe motion and camera commands
+- stores calibration locally in `~/.config/picar-x/picar-x.conf`
 
-Or run hardware nodes directly:
+The remote machine owns the application logic:
 
-```bash
-ros2 run picarx_local_ros2 picarx_driver_node
-ros2 run picarx_local_ros2 picarx_safety_node
-```
+- `picarx_remote_ros2`
+- runs converted example applications
+- calls calibration services over ROS
+- should use the same `ROS_DOMAIN_ID` as the PI-CAR-X
+- for multi-machine setups, should preferably use a Fast DDS Discovery Server instead of relying on multicast discovery
 
-Hardware launch important parameter:
-
-- `direction_servo_pin` (default `P3`)
-
-## Run on Jetson (remote/apps)
-
-Launch any converted example app:
-
-```bash
-ros2 launch picarx_remote_ros2 run_4_avoiding_obstacles.launch.py
-```
-
-Other examples follow the same pattern:
-
-```bash
-ros2 launch picarx_remote_ros2 run_6_line_tracking.launch.py
-ros2 launch picarx_remote_ros2 run_11_video_car.launch.py
-```
-
-Generic runner command:
-
-```bash
-ros2 run picarx_remote_ros2 picarx_example_runner_node --ros-args \
-  -p example_script:=4.avoiding_obstacles.py
-```
-
-## Topic contract
+## Topic Contract
 
 Remote apps publish commands and local hardware consumes them:
 
@@ -70,45 +42,31 @@ Local hardware publishes sensors:
 
 - `/picarx/distance`
 - `/picarx/grayscale`
-- `/picarx/calibration/state` (`[dir_offset, pan_offset, tilt_offset, left_dir, right_dir]`)
+- `/picarx/calibration/state`
 
-## Remote calibration (persisted on PI-CAR-X)
+## Remote Calibration Tools
 
-Calibration values are stored locally on the PI-CAR-X through the existing `picarx` config file.
-You can apply calibration remotely from Jetson with:
+CLI:
 
 ```bash
 ros2 run picarx_remote_ros2 picarx_calibration_cli --show
-ros2 run picarx_remote_ros2 picarx_calibration_cli --set-motor -1 1 --save --show
-ros2 run picarx_remote_ros2 picarx_calibration_cli --set-servo 0.0 0.0 0.0 --save --show
-ros2 run picarx_remote_ros2 picarx_calibration_cli --load --show
-ros2 run picarx_remote_ros2 picarx_calibration_cli --reset --show
 ```
 
-Graphical tool (tkinter):
+Optional tkinter GUI:
 
 ```bash
 ros2 run picarx_remote_ros2 picarx_calibration_gui
 ```
 
-Driver endpoints used by the CLI:
+The GUI requires `_tkinter` in the active Python environment.
 
-- Topics:
-  - `/picarx/calibration/servo_offsets` (`std_msgs/Float32MultiArray`, 3 values)
-  - `/picarx/calibration/motor_directions` (`std_msgs/Int32MultiArray`, 2 values, each `-1` or `1`)
-- Services:
-  - `/picarx/calibration/get` (`std_srvs/Trigger`)
-  - `/picarx/calibration/save` (`std_srvs/Trigger`)
-  - `/picarx/calibration/load` (`std_srvs/Trigger`)
-  - `/picarx/calibration/reset` (`std_srvs/Trigger`)
+## Discovery
 
-Calibration file location (PI-CAR-X local):
+Two deployment modes are supported:
 
-- Default path used by this ROS setup: `~/.config/picar-x/picar-x.conf`
-- If the file does not exist, `picarx` uses defaults and creates it on first write/save.
+- local-only ROS on the PI-CAR-X: standard ROS 2 discovery is enough
+- remote host + PI-CAR-X: prefer Fast DDS Discovery Server
 
-## Notes
+The local-only workflow is documented in [`LOCAL_PI_CAR_X.md`](/home/gotcha/git/picar-x/ros/LOCAL_PI_CAR_X.md).
 
-- Keep `picarx` and required runtime dependencies installed in each machine environment as needed.
-- Remote examples that use camera/STT/TTS/LLM still require those dependencies on the Jetson side.
-- `picarx_calibration_gui` requires tkinter (`_tkinter` module) in the active Python environment.
+The remote multi-machine workflow, including Discovery Server setup, is documented in [`REMOTE_HOST.md`](/home/gotcha/git/picar-x/ros/REMOTE_HOST.md).
