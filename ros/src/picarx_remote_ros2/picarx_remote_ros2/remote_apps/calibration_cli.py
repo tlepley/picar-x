@@ -7,6 +7,7 @@ import argparse
 from typing import Optional
 
 import rclpy
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray, Int32MultiArray
 from std_srvs.srv import Trigger
@@ -15,6 +16,8 @@ from std_srvs.srv import Trigger
 class CalibrationClient(Node):
     def __init__(self) -> None:
         super().__init__('picarx_remote_calibration_cli')
+        self._executor = SingleThreadedExecutor()
+        self._executor.add_node(self)
         self._servo_pub = self.create_publisher(Float32MultiArray, '/picarx/calibration/servo_offsets', 10)
         self._motor_pub = self.create_publisher(Int32MultiArray, '/picarx/calibration/motor_directions', 10)
 
@@ -52,7 +55,7 @@ class CalibrationClient(Node):
             self.get_logger().error(f'Service unavailable: /picarx/calibration/{name}')
             return False
         future = cli.call_async(Trigger.Request())
-        rclpy.spin_until_future_complete(self, future, timeout_sec=3.0)
+        self._executor.spin_until_future_complete(future, timeout_sec=3.0)
         if not future.done() or future.result() is None:
             self.get_logger().error(f'Service call failed: /picarx/calibration/{name}')
             return False
@@ -74,7 +77,7 @@ class CalibrationClient(Node):
             self.get_logger().error('Service unavailable: /picarx/calibration/get')
             return None
         future = cli.call_async(Trigger.Request())
-        rclpy.spin_until_future_complete(self, future, timeout_sec=3.0)
+        self._executor.spin_until_future_complete(future, timeout_sec=3.0)
         if not future.done() or future.result() is None:
             self.get_logger().error('Service call failed: /picarx/calibration/get')
             return None
@@ -105,10 +108,10 @@ def main(args=None) -> None:
     try:
         if parsed.set_servo is not None:
             node.set_servo_offsets(*parsed.set_servo)
-            rclpy.spin_once(node, timeout_sec=0.1)
+            node._executor.spin_once(timeout_sec=0.1)
         if parsed.set_motor is not None:
             node.set_motor_directions(*parsed.set_motor)
-            rclpy.spin_once(node, timeout_sec=0.1)
+            node._executor.spin_once(timeout_sec=0.1)
         if parsed.reset:
             ok = node.call_trigger('reset') and ok
         if parsed.load:
@@ -118,6 +121,7 @@ def main(args=None) -> None:
         if parsed.show:
             ok = node.print_state() and ok
     finally:
+        node._executor.remove_node(node)
         node.destroy_node()
         rclpy.shutdown()
 

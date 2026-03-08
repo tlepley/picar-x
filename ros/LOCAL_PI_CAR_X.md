@@ -167,11 +167,7 @@ Verify that `libcamerasrc` is available:
 gst-inspect-1.0 libcamerasrc
 ```
 
-The local camera publisher is implemented in:
-
-- `ros/src/picarx_camera_cpp/src/picarx_camera_publisher_node.cpp`
-
-### Global video pipeline
+### Notes on the global video pipeline
 
 The current video path is:
 
@@ -195,61 +191,192 @@ This means:
 - camera tuning issues such as brightness, contrast, exposure, or noise are local PI-side issues
 - ROS is only used after the frame has already been captured and converted into a ROS image message
 
-The local camera publisher also exposes stream control services:
-
-- `/picarx_camera_publisher_node/start`
-- `/picarx_camera_publisher_node/stop`
 
 ### Build the local PI-CAR-X package
 
-The local hardware launch also starts the camera publisher from `picarx_camera_cpp`, so build both packages:
+The hardware launch also starts the camera publisher from `picarx_camera_cpp`, so build this package
+in addition of picarx_local_ros2. It is also advised to build the remote package too as it can be
+used for testing the setup locall on the raspberry-pi.
 
 ```bash
-cd ~/git/picar-x/ros
+pyenv activate ros-humble
 source ~/ros2_humble/install/setup.bash
-PYTHONNOUSERSITE=1 colcon build --packages-select picarx_camera_cpp picarx_local_ros2
+
+cd ~/git/picar-x/ros
+PYTHONNOUSERSITE=1 colcon build \
+   --packages-select picarx_camera_cpp picarx_local_ros2 picarx_remote_ros2
 source install/setup.bash
 ```
 
-
-### Configure the DDS domain
-
-Use the same domain as the remote ROS host:
-
-```bash
-export ROS_DOMAIN_ID=99
-unset ROS_LOCALHOST_ONLY
-```
-
-This can also be added to your shell startup if that matches your deployment.
-
-### Remote operation from another machine
-
-If you run the application logic from another ROS host, local-only ROS usage remains unchanged, but multi-machine discovery should preferably use a Fast DDS Discovery Server instead of relying on multicast.
+### Execute the local PI-CAR-X
 
 In the setup below, the Discovery Server runs on the remote host at `<REMOTE_HOST_IP>`.
-
-Set the PI-CAR-X environment like this before launching the local hardware stack:
+Replace this IP adress with the right one in your environment.
 
 ```bash
-cd ~/git/picar-x/ros
+export REMOTE_HOST_IP=192.168.0.15
+```
+
+Set the PI-CAR-X environment before launching the local hardware stack.
+Note that RMW_IMPLEMENTATION, ROS_DOMAIN_ID and ROS_DISCOVERY_SERVER must
+be configured the same way on the local raspberry pi and remote computer. 
+
+```bash
+pyenv activate ros-humble
 source ~/ros2_humble/install/setup.bash
+
+cd ~/git/picar-x/ros
 source install/setup.bash
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export ROS_DOMAIN_ID=99
 unset ROS_LOCALHOST_ONLY
-export ROS_DISCOVERY_SERVER=<REMOTE_HOST_IP>:11811
+export ROS_DISCOVERY_SERVER=$REMOTE_HOST_IP:11811
 ```
 
-Then launch the hardware nodes normally:
+Then launch the hardware nodes:
 
 ```bash
 ros2 launch picarx_local_ros2 picarx_hardware.launch.py
 ```
 
-If you only work locally on the PI-CAR-X itself, `ROS_DISCOVERY_SERVER` is not required.
+## 3. Local tests
+
+### Launch and verify local nodes
+
+In another shell, verify the nodes:
+
+```bash
+pyenv activate ros-humble
+source ~/ros2_humble/install/setup.bash
+
+cd ~/git/picar-x/ros
+source install/setup.bash
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+export ROS_DOMAIN_ID=99
+unset ROS_LOCALHOST_ONLY
+export ROS_DISCOVERY_SERVER=$REMOTE_HOST_IP:11811
+
+ros2 node list
+```
+
+Expected nodes:
+- `/picarx_camera_publisher_node`
+- `/picarx_driver_node`
+- `/picarx_safety_node`
+- `/picarx_embodiment_node`
+
+In case te node list command gives nothing, best is to restart the daemon and retry:
+```bash
+ros2 daemon stop
+ros2 daemon start
+sleep 2
+```
+
+### Test local calibration
+
+If you also want to test the remote-style calibration tools from another shell on the same PI:
+
+```bash
+pyenv activate ros-humble
+source ~/ros2_humble/install/setup.bash
+
+cd ~/git/picar-x/ros
+source install/setup.bash
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+export ROS_DOMAIN_ID=99
+unset ROS_LOCALHOST_ONLY
+export ROS_DISCOVERY_SERVER=$REMOTE_HOST_IP:11811
+
+ros2 run picarx_remote_ros2 picarx_calibration_cli --show
+```
+
+Important note: when ROS 2 is used with DDS discovery through a Discovery Server, `ros2 service list`
+and `ros2 node info` may show no services even while the driver is alive and the calibration endpoints
+are reachable from a real ROS client. In that case, the missing `ros2cli` output does not mean the
+services are absent.
+
+Calibration is stored locally in:
+
+```bash
+~/.config/picar-x/picar-x.conf
+```
+
+### Test the camera stream locally
+
+You can stop and restart the local camera stream explicitly:
+
+```bash
+ros2 service call /picarx_camera_publisher_node/stop std_srvs/srv/Trigger
+ros2 service call /picarx_camera_publisher_node/start std_srvs/srv/Trigger
+```
+
+You can also check that the camera node and stream are available, but
+except the nodes, the topics and service may not well be listed with DDS:
+
+```bash
+ros2 node list
+ros2 topic list | grep picarx/camera
+ros2 topic hz /picarx/camera/image_raw
+```
+
+### Voice-active-car split support
+
+The local hardware launch also starts the PI-side embodiment node used by the
+split `voice_active_car` example:
+
+- `/picarx_embodiment_node`
+
+### Test local embodiment features
+
+Quick node check:
+
+```bash
+ros2 node list | grep embodiment
+```
+
+Quick LED tests:
+
+```bash
+ros2 topic pub --once /picarx/embodiment/led std_msgs/msg/String "{data: 'on'}"
+ros2 topic pub --once /picarx/embodiment/led std_msgs/msg/String "{data: 'off'}"
+ros2 topic pub --once /picarx/embodiment/led std_msgs/msg/String "{data: 'blink_once'}"
+```
+
+Quick sound tests:
+
+```bash
+ros2 topic pub --once /picarx/embodiment/sound std_msgs/msg/String "{data: 'honking'}"
+ros2 topic pub --once /picarx/embodiment/sound std_msgs/msg/String "{data: 'start engine'}"
+```
+
+If the node logs `Sound command received: ...` but no audio comes out, the ROS
+path is working and the issue is in the local ALSA / speaker / `robot_hat`
+audio setup on the PI-CAR-X.
+
+### Test obstacle avoidance locally
+
+If you want a local end-to-end test on the same PI-CAR-X machine:
+
+```bash
+pyenv activate ros-humble
+source ~/ros2_humble/install/setup.bash
+
+cd ~/git/picar-x/ros
+source install/setup.bash
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+export ROS_DOMAIN_ID=99
+unset ROS_LOCALHOST_ONLY
+export ROS_DISCOVERY_SERVER=$REMOTE_HOST_IP:11811
+
+ros2 launch picarx_remote_ros2 run_4_avoiding_obstacles.launch.py
+```
 
 ### Default camera tuning
+
+The local camera publisher also exposes stream control services:
+
+- `/picarx_camera_publisher_node/start`
+- `/picarx_camera_publisher_node/stop`
 
 The local hardware launch includes a default camera tuning profile for `libcamerasrc`.
 
@@ -269,99 +396,3 @@ It is intended as a practical compromise:
 - still dependent on the actual ambient light
 
 If the image is still too dark, improve the real scene lighting first. Software tuning can only trade brightness against noise; it cannot compensate for a weak sensor in poor light.
-
-## 3. Local tests
-
-### Launch and verify local nodes
-
-Launch the hardware stack:
-
-```bash
-ros2 launch picarx_local_ros2 picarx_hardware.launch.py
-```
-
-In another shell, verify the nodes:
-
-```bash
-cd ~/git/picar-x/ros
-source ~/ros2_humble/install/setup.bash
-source install/setup.bash
-export ROS_DOMAIN_ID=99
-unset ROS_LOCALHOST_ONLY
-ros2 node list
-```
-
-Expected nodes:
-
-- `/picarx_driver_node`
-- `/picarx_safety_node`
-
-If you are using a Discovery Server for multi-machine operation, make sure the verification shell uses the same environment:
-
-```bash
-export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-export ROS_DOMAIN_ID=99
-unset ROS_LOCALHOST_ONLY
-export ROS_DISCOVERY_SERVER=<REMOTE_HOST_IP>:11811
-ros2 daemon stop
-ros2 daemon start
-sleep 2
-ros2 node list
-```
-
-### Test local calibration
-
-Check calibration state:
-
-```bash
-ros2 service list | grep calibration
-ros2 topic echo /picarx/calibration/state --once
-```
-
-If you also want to test the remote-style calibration tools from another shell on the same PI:
-
-```bash
-cd ~/git/picar-x/ros
-source ~/ros2_humble/install/setup.bash
-source install/setup.bash
-export ROS_DOMAIN_ID=99
-unset ROS_LOCALHOST_ONLY
-ros2 run picarx_remote_ros2 picarx_calibration_cli --show
-```
-
-Calibration is stored locally in:
-
-```bash
-~/.config/picar-x/picar-x.conf
-```
-
-### Test the camera stream locally
-
-Check that the camera node and stream are available:
-
-```bash
-ros2 node list
-ros2 topic list | grep picarx/camera
-ros2 topic hz /picarx/camera/image_raw
-```
-
-You can also stop and restart the local camera stream explicitly:
-
-```bash
-ros2 service call /picarx_camera_publisher_node/stop std_srvs/srv/Trigger
-ros2 service call /picarx_camera_publisher_node/start std_srvs/srv/Trigger
-```
-
-### Test obstacle avoidance locally
-
-If you want a local end-to-end test on the same PI-CAR-X machine:
-
-```bash
-cd ~/git/picar-x/ros
-source ~/ros2_humble/install/setup.bash
-PYTHONNOUSERSITE=1 colcon build --packages-select picarx_remote_ros2
-source install/setup.bash
-export ROS_DOMAIN_ID=99
-unset ROS_LOCALHOST_ONLY
-ros2 launch picarx_remote_ros2 run_4_avoiding_obstacles.launch.py
-```

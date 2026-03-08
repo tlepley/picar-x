@@ -39,7 +39,12 @@ setup(
             'picarx_example_runner_node = picarx_remote_ros2.remote_apps.example_runner_node:main',
             'picarx_calibration_cli = picarx_remote_ros2.remote_apps.calibration_cli:main',
             'picarx_calibration_gui = picarx_remote_ros2.remote_apps.calibration_gui:main',
+            'run_1_cali_grayscale_app = picarx_remote_ros2.remote_apps.grayscale_calibration_app:main',
+            'run_1_cali_servo_motor_app = picarx_remote_ros2.remote_apps.servo_motor_calibration_app:main',
+            'run_servo_zeroing_app = picarx_remote_ros2.remote_apps.servo_zeroing_cli:main',
             'picarx_video_viewer_node = picarx_remote_ros2.remote_apps.video_viewer_node:main',
+            'run_3_keyboard_control_app = picarx_remote_ros2.remote_apps.keyboard_control_app:main',
+            'picarx_voice_active_car_app = picarx_remote_ros2.remote_apps.voice_active_car_app:main',
         ],
     },
 )
