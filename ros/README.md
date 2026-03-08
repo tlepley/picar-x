@@ -9,6 +9,7 @@ The recommended reading order is:
 
 1. [`LOCAL_PI_CAR_X.md`](LOCAL_PI_CAR_X.md)
 2. [`REMOTE_HOST.md`](REMOTE_HOST.md)
+3. [`INTERFACE.md`](INTERFACE.md)
 
 ## Quick Summary
 
@@ -78,6 +79,13 @@ That viewer requests camera start on launch and camera stop on exit by default.
 
 ## Remote Calibration Tools
 
+The local driver node exposes these calibration services:
+
+- `/picarx/calibration/save`
+- `/picarx/calibration/load`
+- `/picarx/calibration/reset`
+- `/picarx/calibration/get`
+
 CLI:
 
 ```bash
@@ -91,6 +99,11 @@ ros2 run picarx_remote_ros2 picarx_calibration_gui
 ```
 
 The GUI requires `_tkinter` in the active Python environment.
+
+Note: when ROS 2 is used with DDS discovery through a Discovery Server, `ros2 service list` or
+`ros2 node info` can appear empty even while the calibration CLI works and the services above are
+reachable. If that happens, do not treat the missing `ros2cli` output as proof that the services
+are not published.
 
 ## Discovery
 

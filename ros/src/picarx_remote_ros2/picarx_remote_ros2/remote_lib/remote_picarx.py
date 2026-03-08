@@ -6,98 +6,11 @@ This module provides a Picarx-like API without direct GPIO access.
 
 from __future__ import annotations
 
-import atexit
-import threading
-import time
 from typing import Dict, List
 
-import rclpy
-from geometry_msgs import msg as ros_geometry_msg
-from rclpy.node import Node
 from std_msgs import msg as ros_msg
 
-
-class _RemoteRosContext:
-    """Shared ROS context for all RemotePicarx instances in one process."""
-
-    def __init__(self) -> None:
-        if not rclpy.ok():
-            rclpy.init(args=None)
-
-        # In ROS, this process needs a Node to communicate on the graph.
-        # This node runs on the remote/control machine, not on the car.
-        self.node = Node(f'picarx_remote_client_{int(time.time() * 1000) % 100000}')
-        self._lock = threading.Lock()
-        self._distance = -1.0
-        self._grayscale = [0.0, 0.0, 0.0]
-        self._running = True
-
-        # These publishers send driving commands onto ROS topics.
-        # The local node running on the PI-CAR-X subscribes to them and
-        # translates them into real hardware actions.
-        self.cmd_pub = self.node.create_publisher(ros_geometry_msg.Twist, '/cmd_vel_raw', 10)
-        self.stop_pub = self.node.create_publisher(ros_msg.Empty, '/picarx/stop_request', 10)
-        self.speed_pub = self.node.create_publisher(ros_msg.Float32, '/picarx/speed', 10)
-        self.steering_pub = self.node.create_publisher(ros_msg.Float32, '/picarx/steering', 10)
-        self.cam_pan_pub = self.node.create_publisher(ros_msg.Float32, '/picarx/camera_pan', 10)
-        self.cam_tilt_pub = self.node.create_publisher(ros_msg.Float32, '/picarx/camera_tilt', 10)
-
-        # These subscriptions receive sensor values published by the car.
-        # That lets remote code read distance / grayscale as if it were local.
-        self.node.create_subscription(ros_msg.Float32, '/picarx/distance', self._on_distance, 10)
-        self.node.create_subscription(ros_msg.Float32MultiArray, '/picarx/grayscale', self._on_grayscale, 10)
-
-        # ROS callbacks only run while the node is being "spun".
-        # We keep a small background thread alive so incoming sensor messages
-        # update our cached state continuously.
-        self._spin_thread = threading.Thread(target=self._spin_loop, daemon=True)
-        self._spin_thread.start()
-        atexit.register(self.close)
-
-    def _on_distance(self, msg: ros_msg.Float32) -> None:
-        with self._lock:
-            self._distance = float(msg.data)
-
-    def _on_grayscale(self, msg: ros_msg.Float32MultiArray) -> None:
-        vals = list(msg.data)
-        if len(vals) >= 3:
-            with self._lock:
-                self._grayscale = [float(vals[0]), float(vals[1]), float(vals[2])]
-
-    def _spin_loop(self) -> None:
-        while self._running and rclpy.ok():
-            rclpy.spin_once(self.node, timeout_sec=0.05)
-
-    def get_distance(self) -> float:
-        with self._lock:
-            return float(self._distance)
-
-    def get_grayscale(self) -> List[float]:
-        with self._lock:
-            return list(self._grayscale)
-
-    def close(self) -> None:
-        if not self._running:
-            return
-        self._running = False
-        if self._spin_thread.is_alive():
-            self._spin_thread.join(timeout=1.0)
-        try:
-            self.node.destroy_node()
-        except Exception:
-            pass
-
-
-_CTX: _RemoteRosContext | None = None
-_CTX_LOCK = threading.Lock()
-
-
-def _get_ctx() -> _RemoteRosContext:
-    global _CTX
-    with _CTX_LOCK:
-        if _CTX is None:
-            _CTX = _RemoteRosContext()
-    return _CTX
+from .remote_runtime import get_runtime
 
 
 class _UltrasonicProxy:
@@ -137,7 +50,7 @@ class RemotePicarx:
         # Keep the constructor compatible with the hardware Picarx API even
         # though the remote implementation does not use local pins at all.
         del servo_pins, motor_pins, grayscale_pins, ultrasonic_pins, config
-        self._ctx = _get_ctx()
+        self._ctx = get_runtime()
 
         self.dir_cali_val = 0.0
         self.cam_pan_cali_val = 0.0
@@ -217,10 +130,6 @@ class RemotePicarx:
 
     def stop(self):
         self._publish_speed(0.0)
-        # Stop is split in two signals:
-        # - speed=0 requests no forward/backward motion
-        # - stop_request lets the safety/local side force an immediate halt
-        self._ctx.stop_pub.publish(ros_msg.Empty())
 
     def _publish_speed(self, speed: float) -> None:
         msg = ros_msg.Float32()
@@ -236,6 +145,9 @@ class RemotePicarx:
     def set_grayscale_reference(self, value):
         if isinstance(value, list) and len(value) == 3:
             self.line_reference = [float(v) for v in value]
+            msg = ros_msg.Float32MultiArray()
+            msg.data = list(self.line_reference)
+            self._ctx.line_ref_pub.publish(msg)
             return
         raise ValueError("grayscale reference must be a 1*3 list")
 
@@ -262,6 +174,9 @@ class RemotePicarx:
     def set_cliff_reference(self, value):
         if isinstance(value, list) and len(value) == 3:
             self.cliff_reference = [float(v) for v in value]
+            msg = ros_msg.Float32MultiArray()
+            msg.data = list(self.cliff_reference)
+            self._ctx.cliff_ref_pub.publish(msg)
             return
         raise ValueError("cliff reference must be a 1*3 list")
 

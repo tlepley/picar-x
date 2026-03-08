@@ -58,6 +58,8 @@ class PicarxDriverNode(Node):
         self.create_subscription(Float32, '/picarx/camera_tilt', self._on_camera_tilt, 10)
         self.create_subscription(Float32MultiArray, '/picarx/calibration/servo_offsets', self._on_servo_offsets, 10)
         self.create_subscription(Int32MultiArray, '/picarx/calibration/motor_directions', self._on_motor_directions, 10)
+        self.create_subscription(Float32MultiArray, '/picarx/calibration/line_reference', self._on_line_reference, 10)
+        self.create_subscription(Float32MultiArray, '/picarx/calibration/cliff_reference', self._on_cliff_reference, 10)
 
         self._distance_pub = self.create_publisher(Float32, '/picarx/distance', 10)
         self._grayscale_pub = self.create_publisher(Float32MultiArray, '/picarx/grayscale', 10)
@@ -67,6 +69,7 @@ class PicarxDriverNode(Node):
         self.create_service(Trigger, '/picarx/calibration/load', self._on_load_calibration)
         self.create_service(Trigger, '/picarx/calibration/reset', self._on_reset_calibration)
         self.create_service(Trigger, '/picarx/calibration/get', self._on_get_calibration)
+        self.create_service(Trigger, '/picarx/servo_zeroing', self._on_servo_zeroing)
 
         sensor_period = 1.0 / max(sensor_rate_hz, 0.1)
         self.create_timer(sensor_period, self._publish_sensors)
@@ -112,6 +115,20 @@ class PicarxDriverNode(Node):
         self._hardware.set_motor_directions(vals[0], vals[1])
         self._publish_calibration_state()
 
+    def _on_line_reference(self, msg: Float32MultiArray) -> None:
+        vals = list(msg.data)
+        if len(vals) < 3:
+            self.get_logger().warning('Ignoring line reference update: expected 3 values.')
+            return
+        self._hardware.set_line_reference(vals[:3])
+
+    def _on_cliff_reference(self, msg: Float32MultiArray) -> None:
+        vals = list(msg.data)
+        if len(vals) < 3:
+            self.get_logger().warning('Ignoring cliff reference update: expected 3 values.')
+            return
+        self._hardware.set_cliff_reference(vals[:3])
+
     def _on_save_calibration(self, _request: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
         self._hardware.save_calibration()
         self._publish_calibration_state()
@@ -135,14 +152,23 @@ class PicarxDriverNode(Node):
 
     def _on_get_calibration(self, _request: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
         vals = self._hardware.get_calibration_state()
+        grayscale_vals = self._hardware.get_grayscale_calibration_state()
         response.success = True
         response.message = (
             f'dir_offset={vals[0]:.3f} '
             f'pan_offset={vals[1]:.3f} '
             f'tilt_offset={vals[2]:.3f} '
             f'left_dir={int(vals[3])} '
-            f'right_dir={int(vals[4])}'
+            f'right_dir={int(vals[4])} '
+            f'line_ref={grayscale_vals[0]:.0f},{grayscale_vals[1]:.0f},{grayscale_vals[2]:.0f} '
+            f'cliff_ref={grayscale_vals[3]:.0f},{grayscale_vals[4]:.0f},{grayscale_vals[5]:.0f}'
         )
+        return response
+
+    def _on_servo_zeroing(self, _request: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
+        self._hardware.zero_servos_raw()
+        response.success = True
+        response.message = 'Raw steering/pan/tilt servos set to angle 0.'
         return response
 
     def _publish_sensors(self) -> None:

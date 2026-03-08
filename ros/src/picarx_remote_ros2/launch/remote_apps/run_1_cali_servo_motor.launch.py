@@ -1,19 +1,16 @@
 from launch import LaunchDescription
-from launch_ros.actions import Node
+from launch.actions import ExecuteProcess
 
 
 def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
-        Node(
-            package='picarx_remote_ros2',
-            executable='picarx_example_runner_node',
-            name='picarx_example_runner',
-            output='screen',
-            parameters=[
-                {
-                    'example_script': '1.cali_servo_motor.py',
-                    'pass_ros_args': False,
-                }
+        ExecuteProcess(
+            cmd=[
+                'script',
+                '-qec',
+                'ros2 run picarx_remote_ros2 run_1_cali_servo_motor_app',
+                '/dev/null',
             ],
+            output='screen',
         ),
     ])

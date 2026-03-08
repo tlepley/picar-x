@@ -6,9 +6,12 @@ Only this adapter talks directly to the picarx.Picarx API.
 
 import math
 import os
+import time
 from typing import List
 
 from picarx import Picarx
+from robot_hat import Servo
+from robot_hat.utils import reset_mcu
 
 
 def clamp(value: float, lower: float, upper: float) -> float:
@@ -99,6 +102,12 @@ class PicarxHardwareAdapter:
         self._px.motor_direction_calibrate(1, left)
         self._px.motor_direction_calibrate(2, right)
 
+    def set_line_reference(self, values: List[float]) -> None:
+        self._px.set_line_reference([float(v) for v in values])
+
+    def set_cliff_reference(self, values: List[float]) -> None:
+        self._px.set_cliff_reference([float(v) for v in values])
+
     def save_calibration(self) -> None:
         # Calibration setters persist immediately through picarx fileDB.
         return
@@ -110,6 +119,20 @@ class PicarxHardwareAdapter:
         self.set_servo_offsets(0.0, 0.0, 0.0)
         self.set_motor_directions(1, 1)
 
+    def zero_servos_raw(self) -> None:
+        # Preserve the original example semantics: reset the MCU and drive all
+        # 12 servo channels through a short zeroing sequence.
+        reset_mcu()
+        time.sleep(0.2)
+        for channel in range(12):
+            servo = Servo(channel)
+            servo.angle(-30)
+            time.sleep(0.1)
+            servo.angle(10)
+            time.sleep(0.1)
+            servo.angle(0)
+            time.sleep(0.1)
+
     def get_calibration_state(self) -> List[float]:
         return [
             float(self._px.dir_cali_val),
@@ -117,6 +140,16 @@ class PicarxHardwareAdapter:
             float(self._px.cam_tilt_cali_val),
             float(self._px.cali_dir_value[0]),
             float(self._px.cali_dir_value[1]),
+        ]
+
+    def get_grayscale_calibration_state(self) -> List[float]:
+        return [
+            float(self._px.line_reference[0]),
+            float(self._px.line_reference[1]),
+            float(self._px.line_reference[2]),
+            float(self._px.cliff_reference[0]),
+            float(self._px.cliff_reference[1]),
+            float(self._px.cliff_reference[2]),
         ]
 
     def _reconnect_hardware(self) -> None:

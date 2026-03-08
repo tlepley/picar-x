@@ -1,9 +1,25 @@
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description() -> LaunchDescription:
+    enable_embodiment = LaunchConfiguration('enable_embodiment')
+    enable_audio = LaunchConfiguration('enable_audio')
+
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'enable_embodiment',
+            default_value='true',
+            description='Whether to start the local embodiment node (LED/sound helpers).',
+        ),
+        DeclareLaunchArgument(
+            'enable_audio',
+            default_value='false',
+            description='Whether the embodiment node should initialize and use local audio.',
+        ),
         Node(
             package='picarx_local_ros2',
             executable='picarx_driver_node',
@@ -34,6 +50,18 @@ def generate_launch_description() -> LaunchDescription:
                     'distance_timeout_sec': 1.0,
                     'cmd_timeout_sec': 0.6,
                     'publish_rate_hz': 20.0,
+                }
+            ],
+        ),
+        Node(
+            package='picarx_local_ros2',
+            executable='picarx_embodiment_node',
+            name='picarx_embodiment_node',
+            output='screen',
+            condition=IfCondition(enable_embodiment),
+            parameters=[
+                {
+                    'enable_audio': enable_audio,
                 }
             ],
         ),
