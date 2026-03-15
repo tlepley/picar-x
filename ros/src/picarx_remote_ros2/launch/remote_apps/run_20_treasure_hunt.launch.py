@@ -6,14 +6,8 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         Node(
             package='picarx_remote_ros2',
-            executable='picarx_example_runner_node',
-            name='picarx_example_runner',
+            executable='run_20_treasure_hunt_app',
+            name='run_20_treasure_hunt_app',
             output='screen',
-            parameters=[
-                {
-                    'example_script': '20.treasure_hunt.py',
-                    'pass_ros_args': False,
-                }
-            ],
         ),
     ])

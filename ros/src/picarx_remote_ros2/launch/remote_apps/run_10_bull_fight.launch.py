@@ -6,14 +6,8 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         Node(
             package='picarx_remote_ros2',
-            executable='picarx_example_runner_node',
-            name='picarx_example_runner',
+            executable='run_10_bull_fight_app',
+            name='run_10_bull_fight_app',
             output='screen',
-            parameters=[
-                {
-                    'example_script': '10.bull_fight.py',
-                    'pass_ros_args': False,
-                }
-            ],
         ),
     ])
