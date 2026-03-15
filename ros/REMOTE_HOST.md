@@ -177,11 +177,38 @@ Keyboard control:
 ros2 run picarx_remote_ros2 run_3_keyboard_control_app
 ```
 
+Interactive computer vision:
+
+```bash
+ros2 run picarx_remote_ros2 run_7_computer_vision_app
+```
+
+Interactive video recording:
+
+```bash
+ros2 run picarx_remote_ros2 run_9_record_video_app
+```
+
+Interactive video driving:
+
+```bash
+ros2 run picarx_remote_ros2 run_11_video_car_app
+```
+
+Interactive treasure hunt:
+
+```bash
+ros2 run picarx_remote_ros2 run_20_treasure_hunt_app
+```
+
 Voice-active-car top-level app:
 
 ```bash
 ros2 run picarx_remote_ros2 picarx_voice_active_car_app
 ```
+
+For OpenCV-based interactive apps, the keyboard is captured by the OpenCV window itself.
+The window must have focus before pressing keys.
 
 ### Use `ros2 launch` for autonomous or viewer-style remote apps
 
@@ -198,16 +225,38 @@ ros2 launch picarx_remote_ros2 run_2_move.launch.py
 ros2 launch picarx_remote_ros2 run_4_avoiding_obstacles.launch.py
 ros2 launch picarx_remote_ros2 run_5_cliff_detection.launch.py
 ros2 launch picarx_remote_ros2 run_6_line_tracking.launch.py
-ros2 launch picarx_remote_ros2 run_7_computer_vision.launch.py
 ros2 launch picarx_remote_ros2 run_8_stare_at_you.launch.py
-ros2 launch picarx_remote_ros2 run_9_record_video.launch.py
 ros2 launch picarx_remote_ros2 run_10_bull_fight.launch.py
-ros2 launch picarx_remote_ros2 run_11_video_car.launch.py
 ros2 launch picarx_remote_ros2 run_12_app_control.launch.py
 ros2 launch picarx_remote_ros2 run_17_text_vision_talk.launch.py
-ros2 launch picarx_remote_ros2 run_20_treasure_hunt.launch.py
 ros2 launch picarx_remote_ros2 run_servo_zeroing.launch.py
 ```
+
+The video-based remote apps now consume the ROS camera stream published by the PI-CAR-X board:
+
+- `/picarx/camera/image_raw`
+
+This applies to:
+
+- `run_7_computer_vision.launch.py`
+- `run_8_stare_at_you.launch.py`
+- `run_9_record_video.launch.py`
+- `run_10_bull_fight.launch.py`
+- `run_11_video_car.launch.py`
+- `run_17_text_vision_talk.launch.py`
+- `run_20_treasure_hunt.launch.py`
+
+These launches no longer need direct access to the physical camera from the remote host. They use the ROS image stream instead of opening the camera locally with `ViLib`/`picamera2`.
+
+Recommended command split for video apps:
+
+- `ros2 run picarx_remote_ros2 run_7_computer_vision_app`
+- `ros2 run picarx_remote_ros2 run_9_record_video_app`
+- `ros2 run picarx_remote_ros2 run_11_video_car_app`
+- `ros2 run picarx_remote_ros2 run_20_treasure_hunt_app`
+- `ros2 launch picarx_remote_ros2 run_8_stare_at_you.launch.py`
+- `ros2 launch picarx_remote_ros2 run_10_bull_fight.launch.py`
+- `ros2 launch picarx_remote_ros2 run_17_text_vision_talk.launch.py`
 
 Practical classification:
 
@@ -216,14 +265,14 @@ Practical classification:
 - `run_4_avoiding_obstacles.launch.py`: autonomous loop
 - `run_5_cliff_detection.launch.py`: autonomous loop
 - `run_6_line_tracking.launch.py`: autonomous loop
-- `run_7_computer_vision.launch.py`: interactive/visual example, but still currently exposed as an example launch
+- `run_7_computer_vision_app`: interactive OpenCV app, use `ros2 run`
 - `run_8_stare_at_you.launch.py`: autonomous vision behavior
-- `run_9_record_video.launch.py`: viewer/recording style example
+- `run_9_record_video_app`: interactive OpenCV app, use `ros2 run`
 - `run_10_bull_fight.launch.py`: autonomous vision behavior
-- `run_11_video_car.launch.py`: keyboard/video oriented example and not ideal as a launch-based workflow
+- `run_11_video_car_app`: interactive OpenCV app, use `ros2 run`
 - `run_12_app_control.launch.py`: special control-mode example, not a simple terminal tool
 - `run_17_text_vision_talk.launch.py`: mixed vision/LLM style example, not a basic terminal-interactive tool
-- `run_20_treasure_hunt.launch.py`: autonomous vision behavior
+- `run_20_treasure_hunt_app`: interactive OpenCV app, use `ros2 run`
 
 ### Keep these launches out of the non-audio validation path
 
@@ -279,14 +328,24 @@ By default, `view_video_stream.launch.py` requests camera start when the viewer 
 Some remote applications use `vilib` for image processing and higher-level
 vision logic on the remote side.
 
-Install it in the active `ros-humble` Python environment:
+Important: do not use the unrelated `vilib` package from PyPI. The examples
+expect the SunFounder Vision Library, which should be installed from the
+official GitHub repository.
+
+There is a Python package name conflict here:
+
+- `vilib` on PyPI can resolve to an unrelated package with the same name
+- the PI-CAR-X examples expect the SunFounder package that exports
+  `from vilib import Vilib`
+
+If `pip install vilib` gives you a package that does not export `Vilib`, you
+have installed the wrong package despite the matching name.
+
+Install it in the active remote Python environment:
 
 ```bash
-export PATH="$HOME/.pyenv/bin:$PATH"
-eval "$(pyenv init -)"
-eval "$(pyenv virtualenv-init -)"
-pyenv activate ros-humble
-pip install vilib
+pip uninstall -y vilib
+pip install git+https://github.com/sunfounder/vilib.git
 ```
 
 This is mainly needed for examples such as:
@@ -298,7 +357,25 @@ This is mainly needed for examples such as:
 - `run_11_video_car.launch.py`
 - `run_20_treasure_hunt.launch.py`
 
-After installing `vilib`, rebuild and resource the remote workspace:
+`ViLib` also requires `picamera2` to be available in that same environment.
+On a Raspberry Pi remote host, the simplest next step to try is:
+
+```bash
+sudo apt update
+sudo apt install -y libcap-dev
+pip install picamera2
+```
+
+If `pip install picamera2` fails while building `python-prctl`, the missing
+system dependency is usually `libcap-dev`.
+
+Quick verification:
+
+```bash
+python -c "from vilib import Vilib; print(Vilib)"
+```
+
+After installing `ViLib` and `picamera2`, rebuild and resource the remote workspace:
 
 ```bash
 cd ~/picar-x/ros
