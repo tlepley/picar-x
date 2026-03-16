@@ -1,13 +1,49 @@
+import asyncio
+import select
+import sys
+import termios
+import tty
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.actions import OpaqueCoroutine
 from launch.conditions import IfCondition
+from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+
+
+def _read_key(timeout_sec: float = 0.2) -> str:
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+        ready, _, _ = select.select([sys.stdin], [], [], timeout_sec)
+        if ready:
+            return sys.stdin.read(1)
+        return ''
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
+async def _keyboard_shutdown_watcher(context) -> None:
+    if not sys.stdin.isatty():
+        print('Keyboard shutdown disabled: stdin is not a TTY.', flush=True)
+        return
+
+    print("Keyboard shutdown enabled: press 'q' to stop the local stack.", flush=True)
+    while True:
+        key = await asyncio.to_thread(_read_key)
+        if key.lower() == 'q':
+            print('Stopping local stack...', flush=True)
+            await context.emit_event(Shutdown(reason="keyboard request: 'q'"))
+            return
 
 
 def generate_launch_description() -> LaunchDescription:
     enable_embodiment = LaunchConfiguration('enable_embodiment')
     enable_audio = LaunchConfiguration('enable_audio')
+    enable_keyboard_shutdown = LaunchConfiguration('enable_keyboard_shutdown')
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -19,6 +55,15 @@ def generate_launch_description() -> LaunchDescription:
             'enable_audio',
             default_value='false',
             description='Whether the embodiment node should initialize and use local audio.',
+        ),
+        DeclareLaunchArgument(
+            'enable_keyboard_shutdown',
+            default_value='true',
+            description='Whether to enable q-based keyboard shutdown for the local stack.',
+        ),
+        OpaqueCoroutine(
+            coroutine=_keyboard_shutdown_watcher,
+            condition=IfCondition(enable_keyboard_shutdown),
         ),
         Node(
             package='picarx_local_ros2',
