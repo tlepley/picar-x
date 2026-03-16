@@ -1,15 +1,21 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>picarx_camera_cpp</name>
+  <name>picarx_local_ros2</name>
   <version>0.1.0</version>
-  <description>ROS 2 C++ camera publisher for PI-CAR-X.</description>
+  <description>PI-CAR-X local hardware ROS 2 package with Python and C++ nodes.</description>
   <maintainer email="you@example.com">picar-x user</maintainer>
   <license>GPL-3.0-or-later</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
 
+  <depend>geometry_msgs</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
   <depend>rclcpp</depend>
+  <depend>rclpy</depend>
   <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
   <depend>std_srvs</depend>
 
   <test_depend>ament_lint_auto</test_depend>

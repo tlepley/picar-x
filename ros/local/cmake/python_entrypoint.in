@@ -1,0 +1,7 @@
+#!@PICARX_LOCAL_PYTHON_EXECUTABLE@
+
+from @PICARX_LOCAL_MODULE_NAME@ import main
+
+
+if __name__ == '__main__':
+    main()

@@ -66,7 +66,7 @@ def generate_launch_description() -> LaunchDescription:
             ],
         ),
         Node(
-            package='picarx_camera_cpp',
+            package='picarx_local_ros2',
             executable='picarx_camera_publisher_node',
             name='picarx_camera_publisher_node',
             output='screen',

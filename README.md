@@ -17,8 +17,8 @@ The ROS workspace is documented in [`ros/README.md`](ros/README.md).
 
 - `example/`: original SunFounder example scripts, preserved
 - `picarx/`: original Python library codebase
-- `ros/src/picarx_local_ros2`: ROS 2 package for hardware-side nodes running on the PI-CAR-X board
-- `ros/src/picarx_remote_ros2`: ROS 2 package for remote applications running on another machine
+- `ros/local`: ROS 2 package directory for hardware-side nodes running on the PI-CAR-X board
+- `ros/remote`: ROS 2 package directory for remote applications running on another machine
 
 ## Using The Original SunFounder Version
 
