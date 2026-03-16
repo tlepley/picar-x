@@ -2,8 +2,8 @@
 
 This workspace is split into two ROS 2 packages:
 
-- `ros/src/picarx_local_ros2`: hardware-side nodes running on the PI-CAR-X board
-- `ros/src/picarx_remote_ros2`: application-side nodes running on a remote ROS host
+- `ros/local`: package directory for hardware-side nodes running on the PI-CAR-X board
+- `ros/remote`: package directory for application-side nodes running on a remote ROS host
 
 The recommended reading order is:
 

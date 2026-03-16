@@ -174,7 +174,7 @@ The current video path is:
 1. the Raspberry Pi camera sensor produces frames
 2. `libcamera` controls the sensor locally on the PI-CAR-X
 3. `libcamerasrc` exposes the camera feed inside a GStreamer pipeline
-4. `picarx_camera_cpp` opens that pipeline through `cv::VideoCapture`
+4. `picarx_local_ros2` opens that pipeline through `cv::VideoCapture`
 5. frames are read into `cv::Mat`
 6. the node converts each frame to `sensor_msgs/msg/Image`
 7. ROS publishes the stream on `/picarx/camera/image_raw`
@@ -194,9 +194,9 @@ This means:
 
 ### Build the local PI-CAR-X package
 
-The hardware launch also starts the camera publisher from `picarx_camera_cpp`, so build this package
-in addition of picarx_local_ros2. It is also advised to build the remote package too as it can be
-used for testing the setup locall on the raspberry-pi.
+The hardware launch now includes the C++ camera publisher directly inside `picarx_local_ros2`.
+It is also advised to build the remote package too as it can be used for testing the setup
+locally on the Raspberry Pi.
 
 ```bash
 pyenv activate ros-humble
@@ -204,7 +204,7 @@ source ~/ros2_humble/install/setup.bash
 
 cd ~/git/picar-x/ros
 PYTHONNOUSERSITE=1 colcon build \
-   --packages-select picarx_camera_cpp picarx_local_ros2 picarx_remote_ros2
+   --packages-select picarx_local_ros2 picarx_remote_ros2
 source install/setup.bash
 ```
 
@@ -387,7 +387,7 @@ It enables auto exposure and applies a conservative brightness and contrast corr
 
 This tuning is defined in:
 
-- `ros/src/picarx_local_ros2/launch/picarx_hardware.launch.py`
+- `ros/local/launch/picarx_hardware.launch.py`
 
 It is intended as a practical compromise:
 

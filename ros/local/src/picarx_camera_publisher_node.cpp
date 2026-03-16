@@ -262,50 +262,27 @@ private:
 
   std::vector<CaptureOption> build_capture_options() const
   {
-    const auto backend = camera_backend_.empty() ? std::string("auto") : camera_backend_;
-    const bool auto_backend = backend == "auto";
-
-    auto make_device_option = [&](const std::string & desc, int index, int api) {
-      return CaptureOption{desc, "", api, false, index};
-    };
-    auto make_string_option = [&](const std::string & desc, const std::string & source, int api) {
-      return CaptureOption{desc, source, api, true, 0};
-    };
-
     std::vector<CaptureOption> options;
+
+    const bool wants_gstreamer = camera_backend_ == "gstreamer";
+    const bool wants_default = camera_backend_.empty() || camera_backend_ == "auto";
+    const bool wants_opencv = camera_backend_ == "opencv";
+
+    if (wants_gstreamer || wants_default) {
+      const auto pipeline = !gstreamer_pipeline_.empty() ?
+        gstreamer_pipeline_ :
+        make_libcamera_pipeline(width_, height_, fps_, camera_auto_exposure_, camera_controls_);
+      options.push_back({"gstreamer pipeline", pipeline, cv::CAP_GSTREAMER, true, -1});
+    }
 
     if (!camera_source_.empty()) {
       if (is_integer_string(camera_source_)) {
-        const int index = std::stoi(camera_source_);
-        if (backend == "v4l2" || auto_backend) {
-          options.push_back(make_device_option("V4L2 device index " + std::to_string(index), index, cv::CAP_V4L2));
-        }
-        if (backend == "opencv" || auto_backend) {
-          options.push_back(make_device_option("OpenCV camera index " + std::to_string(index), index, cv::CAP_ANY));
-        }
-      } else {
-        const int api = backend == "gstreamer" || auto_backend ? cv::CAP_GSTREAMER : cv::CAP_ANY;
-        options.push_back(make_string_option("Configured camera source", camera_source_, api));
+        options.push_back({"OpenCV camera index " + camera_source_, "", cv::CAP_ANY, false, std::stoi(camera_source_)});
+      } else if (wants_opencv || wants_default) {
+        options.push_back({"OpenCV source " + camera_source_, camera_source_, cv::CAP_ANY, true, -1});
       }
-      return options;
-    }
-
-    if (!gstreamer_pipeline_.empty()) {
-      options.push_back(make_string_option("Configured GStreamer pipeline", gstreamer_pipeline_, cv::CAP_GSTREAMER));
-      return options;
-    }
-
-    if (backend == "gstreamer" || auto_backend) {
-      options.push_back(make_string_option(
-        "libcamerasrc GStreamer pipeline",
-        make_libcamera_pipeline(width_, height_, fps_, camera_auto_exposure_, camera_controls_),
-        cv::CAP_GSTREAMER));
-    }
-    if (backend == "v4l2" || auto_backend) {
-      options.push_back(make_device_option("V4L2 device index 0", 0, cv::CAP_V4L2));
-    }
-    if (backend == "opencv" || auto_backend) {
-      options.push_back(make_device_option("OpenCV camera index 0", 0, cv::CAP_ANY));
+    } else if (wants_opencv || wants_default) {
+      options.push_back({"default OpenCV camera index 0", "", cv::CAP_ANY, false, 0});
     }
 
     return options;
@@ -320,35 +297,25 @@ private:
     cv::Mat frame;
     if (!capture_.read(frame) || frame.empty()) {
       RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), 5000, "Failed to read camera frame via %s",
-        active_capture_description_.c_str());
+        get_logger(),
+        *get_clock(),
+        5000,
+        "Failed to read camera frame.");
       return;
     }
 
-    if (frame.channels() == 4) {
-      cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
-    } else if (frame.channels() == 1) {
-      cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
-    }
-
-    sensor_msgs::msg::Image msg;
-    msg.header.stamp = now();
-    msg.header.frame_id = frame_id_;
-    msg.height = static_cast<std::uint32_t>(frame.rows);
-    msg.width = static_cast<std::uint32_t>(frame.cols);
-    msg.encoding = "bgr8";
-    msg.is_bigendian = false;
-    msg.step = static_cast<sensor_msgs::msg::Image::_step_type>(frame.step);
-    const auto bytes = frame.total() * frame.elemSize();
-    msg.data.resize(bytes);
-    std::memcpy(msg.data.data(), frame.data, bytes);
-    publisher_->publish(msg);
-    RCLCPP_INFO_ONCE(
-      get_logger(),
-      "First frame published on %s (%ux%u)",
-      publisher_->get_topic_name(),
-      msg.width,
-      msg.height);
+    auto message = sensor_msgs::msg::Image();
+    message.header.stamp = now();
+    message.header.frame_id = frame_id_;
+    message.height = static_cast<uint32_t>(frame.rows);
+    message.width = static_cast<uint32_t>(frame.cols);
+    message.encoding = "bgr8";
+    message.is_bigendian = false;
+    message.step = static_cast<sensor_msgs::msg::Image::_step_type>(frame.step);
+    const auto size = frame.total() * frame.elemSize();
+    message.data.resize(size);
+    std::memcpy(message.data.data(), frame.data, size);
+    publisher_->publish(std::move(message));
   }
 
   std::string camera_source_;
@@ -363,8 +330,8 @@ private:
   bool camera_auto_exposure_{true};
   std::string camera_controls_;
   bool start_stream_on_launch_{false};
-  std::string active_capture_description_;
   bool streaming_enabled_{false};
+  std::string active_capture_description_{"camera stream not started"};
   cv::VideoCapture capture_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr start_service_;
@@ -375,12 +342,7 @@ private:
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  try {
-    auto node = std::make_shared<PicarxCameraPublisherNode>();
-    rclcpp::spin(node);
-  } catch (const std::exception & exc) {
-    RCLCPP_FATAL(rclcpp::get_logger("picarx_camera_publisher_node"), "%s", exc.what());
-  }
+  rclcpp::spin(std::make_shared<PicarxCameraPublisherNode>());
   rclcpp::shutdown();
   return 0;
 }

@@ -24,9 +24,9 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages', [f'resource/{package_name}']),
         (f'share/{package_name}', ['package.xml']),
-        (f'share/{package_name}/examples', glob('../../../example/*.py')),
-        (f'share/{package_name}/sounds', glob('../../../sounds/*')),
-        (f'share/{package_name}/musics', glob('../../../musics/*')),
+        (f'share/{package_name}/examples', glob('../../example/*.py')),
+        (f'share/{package_name}/sounds', glob('../../sounds/*')),
+        (f'share/{package_name}/musics', glob('../../musics/*')),
     ] + collect_launch_data_files(),
     install_requires=['setuptools'],
     zip_safe=True,
