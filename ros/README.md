@@ -4,6 +4,7 @@ This workspace is split into two ROS 2 packages:
 
 - `ros/local`: package directory for hardware-side nodes running on the PI-CAR-X board
 - `ros/remote`: package directory for application-side nodes running on a remote ROS host
+- `ros/remote_jetson`: native C++ remote applications for lower-latency video + vision use cases
 
 The recommended reading order is:
 
@@ -73,6 +74,12 @@ For a simple remote viewer, use:
 
 ```bash
 ros2 launch picarx_remote_ros2 view_video_stream.launch.py
+```
+
+For the new native Jetson video-car + YOLO app, use:
+
+```bash
+ros2 run picarx_remote_jetson_ros2 picarx_remote_yolo_video_car --ros-args -p engine_path:=$(pwd)/remote_jetson/assets/models/yolov8n_coco_640x640_fp16.engine -p classes_path:=$(pwd)/remote_jetson/assets/labels/yolov8n_coco_80.names
 ```
 
 That viewer requests camera start on launch and camera stop on exit by default.
