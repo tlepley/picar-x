@@ -26,12 +26,17 @@ find_library(CUDART_LIB cudart PATHS /usr/local/cuda/targets/aarch64-linux/lib R
 
 add_executable(picarx_remote_yolo_video_car
   src/picarx_remote_yolo_video_car.cpp
+  src/yolo_video_car_shared.cpp
+  src/detection_pipeline.cpp
+  src/vehicle_controller.cpp
+  src/viewer_ui.cpp
 )
 target_compile_features(picarx_remote_yolo_video_car PUBLIC cxx_std_17)
 target_include_directories(
   picarx_remote_yolo_video_car
   PRIVATE
     ${OpenCV_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${TENSORRT_INCLUDE_DIR}
     ${CUDA_INCLUDE_DIR}
 )
