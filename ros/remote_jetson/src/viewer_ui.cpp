@@ -174,14 +174,27 @@ void ViewerUi::renderFrame(
       cv::FONT_HERSHEY_SIMPLEX, 0.55, cv::Scalar(0, 220, 255), 2);
   }
 
-  drawStatusText(frame, controller, pipeline.getStats(), record_state);
-  cv::imshow(window_name_, frame);
+  if (record_state == "start") {
+    const auto now = std::chrono::steady_clock::now();
+    const double blink_phase = std::chrono::duration<double>(now.time_since_epoch()).count();
+    if (std::fmod(blink_phase, 1.0) < 0.5) {
+      const cv::Point center(frame.cols - 24, 24);
+      cv::circle(frame, center, 10, cv::Scalar(0, 0, 255), cv::FILLED);
+      cv::circle(frame, center, 12, cv::Scalar(220, 220, 220), 1);
+    }
+  }
+
+  const cv::Mat status_panel = buildStatusPanel(
+    frame.cols, frame.rows, controller, pipeline.getStats());
+  cv::Mat composed(frame.rows + status_panel.rows, frame.cols, CV_8UC3, cv::Scalar(18, 18, 18));
+  frame.copyTo(composed(cv::Rect(0, 0, frame.cols, frame.rows)));
+  status_panel.copyTo(composed(cv::Rect(0, frame.rows, status_panel.cols, status_panel.rows)));
+  cv::imshow(window_name_, composed);
 }
 
 void ViewerUi::renderPlaceholder(
   const VehicleController & controller,
-  const DetectionPipeline & pipeline,
-  const std::string & record_state)
+  const DetectionPipeline & pipeline)
 {
   if (!enabled_) {
     return;
@@ -194,36 +207,51 @@ void ViewerUi::renderPlaceholder(
   cv::putText(
     placeholder, "Launch the local hardware stack on the car first.", {24, 120},
     cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(180, 180, 180), 1);
-  drawStatusText(placeholder, controller, pipeline.getStats(), record_state);
-  cv::imshow(window_name_, placeholder);
+  const cv::Mat status_panel = buildStatusPanel(
+    placeholder.cols, placeholder.rows, controller, pipeline.getStats());
+  cv::Mat composed(
+    placeholder.rows + status_panel.rows, placeholder.cols, CV_8UC3, cv::Scalar(18, 18, 18));
+  placeholder.copyTo(composed(cv::Rect(0, 0, placeholder.cols, placeholder.rows)));
+  status_panel.copyTo(
+    composed(cv::Rect(0, placeholder.rows, status_panel.cols, status_panel.rows)));
+  cv::imshow(window_name_, composed);
 }
 
-void ViewerUi::drawStatusText(
-  cv::Mat & frame,
+cv::Mat ViewerUi::buildStatusPanel(
+  int width,
+  int height,
   const VehicleController & controller,
-  const DetectionPipelineStats & stats,
-  const std::string & record_state)
+  const DetectionPipelineStats & stats)
 {
+  constexpr int kPanelHeight = 168;
+  cv::Mat panel(kPanelHeight, width, CV_8UC3, cv::Scalar(24, 24, 24));
+  cv::line(panel, {0, 0}, {width, 0}, cv::Scalar(60, 60, 60), 1);
+
   std::ostringstream line1;
   line1 << "speed=" << controller.currentSpeed()
         << " steering=" << controller.currentSteering();
   cv::putText(
-    frame, line1.str(), {16, 28}, cv::FONT_HERSHEY_SIMPLEX, 0.65,
-    cv::Scalar(255, 255, 255), 2);
+    panel, line1.str(), {16, 28}, cv::FONT_HERSHEY_SIMPLEX, 0.55,
+    cv::Scalar(255, 255, 255), 1);
 
   std::ostringstream line2;
-  line2 << "detector=" << (stats.detector_enabled ? "on" : "off");
+  line2 << "stream=" << width << "x" << height
+        << " detector=" << (stats.detector_enabled ? "on" : "off");
   if (stats.detector_ready) {
     line2 << " backend=" << stats.backend_in_use;
   }
-  line2 << " task=" << stats.model_task;
-  line2 << " decoder=" << stats.decoder;
-  line2 << " boxes=" << stats.display_detection_count
-        << " tracks=" << stats.track_count
-        << " rec=" << record_state;
   cv::putText(
-    frame, line2.str(), {16, 56}, cv::FONT_HERSHEY_SIMPLEX, 0.6,
-    cv::Scalar(200, 200, 200), 2);
+    panel, line2.str(), {16, 56}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
+    cv::Scalar(200, 200, 200), 1);
+
+  std::ostringstream lineDetection;
+  lineDetection << "boxes=" << stats.display_detection_count
+                << " tracks=" << stats.track_count
+                << " task=" << stats.model_task
+                << " decoder=" << stats.decoder;
+  cv::putText(
+    panel, lineDetection.str(), {16, 80}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
+    cv::Scalar(200, 200, 200), 1);
 
   if (show_fps_) {
     const auto now = std::chrono::steady_clock::now();
@@ -243,20 +271,24 @@ void ViewerUi::drawStatusText(
 
     std::ostringstream line3;
     line3 << "ui_fps=" << static_cast<int>(std::round(last_fps_))
-          << " yolo=" << static_cast<int>(std::round(stats.last_inference_ms)) << "ms";
+          << " detect_sched=" << std::fixed << std::setprecision(1) << scheduled_detect_fps
+          << "fps";
     cv::putText(
-      frame, line3.str(), {16, 84}, cv::FONT_HERSHEY_SIMPLEX, 0.6,
-      cv::Scalar(200, 200, 200), 2);
+      panel, line3.str(), {16, 108}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
+      cv::Scalar(200, 200, 200), 1);
 
     std::ostringstream line4;
-    line4 << "yolo_potential=" << std::fixed << std::setprecision(1) << yolo_potential_fps
-          << "fps detect_sched=" << scheduled_detect_fps << "fps";
+    line4 << "yolo=" << static_cast<int>(std::round(stats.last_inference_ms))
+          << "ms yolo_potential=" << std::fixed << std::setprecision(1) << yolo_potential_fps
+          << "fps";
     cv::putText(
-      frame, line4.str(), {16, 112}, cv::FONT_HERSHEY_SIMPLEX, 0.6,
-      cv::Scalar(200, 200, 200), 2);
+      panel, line4.str(), {16, 132}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
+      cv::Scalar(200, 200, 200), 1);
   }
 
   cv::putText(
-    frame, "arrows drive | space stop | +/- speed | t photo | q/e video | f detector | x quit",
-    {16, frame.rows - 18}, cv::FONT_HERSHEY_SIMPLEX, 0.55, cv::Scalar(0, 255, 255), 2);
+    panel, "arrows drive | space stop | +/- speed | t photo | q/e video | f detector | x quit",
+    {16, panel.rows - 14}, cv::FONT_HERSHEY_SIMPLEX, 0.47, cv::Scalar(0, 255, 255), 1);
+
+  return panel;
 }

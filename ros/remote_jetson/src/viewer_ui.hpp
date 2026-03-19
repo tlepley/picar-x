@@ -19,15 +19,14 @@ public:
     const std::string & record_state);
   void renderPlaceholder(
     const VehicleController & controller,
-    const DetectionPipeline & pipeline,
-    const std::string & record_state);
+    const DetectionPipeline & pipeline);
 
 private:
-  void drawStatusText(
-    cv::Mat & frame,
+  cv::Mat buildStatusPanel(
+    int width,
+    int height,
     const VehicleController & controller,
-    const DetectionPipelineStats & stats,
-    const std::string & record_state);
+    const DetectionPipelineStats & stats);
 
   bool enabled_{true};
   bool show_fps_{true};

@@ -80,8 +80,7 @@ public:
     }
 
     if (frame.empty()) {
-      viewer_ui_.renderPlaceholder(
-        vehicle_controller_, detection_pipeline_, media_capture_.recordState());
+      viewer_ui_.renderPlaceholder(vehicle_controller_, detection_pipeline_);
       processViewerActions();
       return;
     }
