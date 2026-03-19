@@ -11,6 +11,7 @@ from launch.conditions import IfCondition
 from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def _read_key(timeout_sec: float = 0.2) -> str:
@@ -44,6 +45,9 @@ def generate_launch_description() -> LaunchDescription:
     enable_embodiment = LaunchConfiguration('enable_embodiment')
     enable_audio = LaunchConfiguration('enable_audio')
     enable_keyboard_shutdown = LaunchConfiguration('enable_keyboard_shutdown')
+    camera_width = LaunchConfiguration('camera_width')
+    camera_height = LaunchConfiguration('camera_height')
+    camera_fps = LaunchConfiguration('camera_fps')
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -60,6 +64,21 @@ def generate_launch_description() -> LaunchDescription:
             'enable_keyboard_shutdown',
             default_value='true',
             description='Whether to enable q-based keyboard shutdown for the local stack.',
+        ),
+        DeclareLaunchArgument(
+            'camera_width',
+            default_value='640',
+            description='Camera stream width in pixels.',
+        ),
+        DeclareLaunchArgument(
+            'camera_height',
+            default_value='480',
+            description='Camera stream height in pixels.',
+        ),
+        DeclareLaunchArgument(
+            'camera_fps',
+            default_value='30.0',
+            description='Camera capture framerate.',
         ),
         OpaqueCoroutine(
             coroutine=_keyboard_shutdown_watcher,
@@ -126,9 +145,9 @@ def generate_launch_description() -> LaunchDescription:
                     'image_topic': '/picarx/camera/image_raw',
                     'frame_id': 'picarx_camera',
                     'publish_rate_hz': 10.0,
-                    'width': 640,
-                    'height': 480,
-                    'fps': 30.0,
+                    'width': ParameterValue(camera_width, value_type=int),
+                    'height': ParameterValue(camera_height, value_type=int),
+                    'fps': ParameterValue(camera_fps, value_type=float),
                 }
             ],
         ),

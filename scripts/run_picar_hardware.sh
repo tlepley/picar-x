@@ -7,6 +7,9 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ROS_DIR="${REPO_DIR}/ros"
 ROS_SETUP="${HOME}/ros2_humble/install/setup.bash"
 REMOTE_HOST_IP="${1:-${REMOTE_HOST_IP:-192.168.0.15}}"
+CAMERA_WIDTH="${2:-${CAMERA_WIDTH:-640}}"
+CAMERA_HEIGHT="${3:-${CAMERA_HEIGHT:-480}}"
+CAMERA_FPS="${4:-${CAMERA_FPS:-30}}"
 
 if [[ -f "${HOME}/.bashrc" ]]; then
   # Load user shell config so pyenv is available in non-interactive shells.
@@ -50,5 +53,9 @@ set +u
 source install/setup.bash
 set -u
 
-echo "Lancement de la stack hardware avec REMOTE_HOST_IP=${REMOTE_HOST_IP}"
-ros2 launch picarx_local_ros2 picarx_hardware.launch.py
+echo \
+  "Lancement de la stack hardware avec REMOTE_HOST_IP=${REMOTE_HOST_IP} CAMERA_WIDTH=${CAMERA_WIDTH} CAMERA_HEIGHT=${CAMERA_HEIGHT} CAMERA_FPS=${CAMERA_FPS}"
+ros2 launch picarx_local_ros2 picarx_hardware.launch.py \
+  camera_width:="${CAMERA_WIDTH}" \
+  camera_height:="${CAMERA_HEIGHT}" \
+  camera_fps:="${CAMERA_FPS}"
