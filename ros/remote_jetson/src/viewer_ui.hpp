@@ -11,27 +11,28 @@ public:
   void shutdown();
   bool enabled() const;
   void printHelp(rclcpp::Node & node) const;
-  std::vector<KeyAction> pollActions(rclcpp::Node & node);
+  std::vector<KeyAction> pollWindowActions(rclcpp::Node & node);
   void renderFrame(
     cv::Mat & frame,
     const VehicleController & controller,
-    const DetectionPipeline & pipeline);
+    const DetectionPipeline & pipeline,
+    const std::string & record_state);
   void renderPlaceholder(
     const VehicleController & controller,
-    const DetectionPipeline & pipeline);
+    const DetectionPipeline & pipeline,
+    const std::string & record_state);
 
 private:
   void drawStatusText(
     cv::Mat & frame,
     const VehicleController & controller,
-    const DetectionPipelineStats & stats);
+    const DetectionPipelineStats & stats,
+    const std::string & record_state);
 
   bool enabled_{true};
   bool show_fps_{true};
-  bool terminal_keyboard_available_{false};
   double last_fps_{0.0};
   int fps_frame_counter_{0};
   std::chrono::steady_clock::time_point fps_window_start_{std::chrono::steady_clock::now()};
   std::string window_name_{"PI-CAR-X Jetson Video Car"};
-  TerminalKeyboard terminal_keyboard_;
 };

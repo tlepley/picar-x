@@ -1,4 +1,5 @@
 #include "detection_pipeline.hpp"
+#include "media_capture.hpp"
 #include "vehicle_controller.hpp"
 #include "viewer_ui.hpp"
 
@@ -10,6 +11,7 @@ public:
   {
     image_topic_ = declare_parameter<std::string>("image_topic", "/picarx/camera/image_raw");
     detection_pipeline_.configure(*this);
+    media_capture_.configure(*this);
     vehicle_controller_.configure(*this);
     viewer_ui_.configure(*this);
 
@@ -18,6 +20,17 @@ public:
       image_topic_,
       rclcpp::SensorDataQoS(),
       std::bind(&RemoteJetsonVideoCarNode::onImage, this, std::placeholders::_1));
+
+    terminal_keyboard_available_ = terminal_keyboard_.open();
+    if (terminal_keyboard_available_) {
+      RCLCPP_INFO(
+        get_logger(),
+        "Terminal keyboard capture enabled. Keep the launch terminal focused for reliable arrow keys.");
+    } else {
+      RCLCPP_WARN(
+        get_logger(),
+        "Terminal keyboard capture unavailable; falling back to OpenCV window key handling.");
+    }
 
     viewer_ui_.initialize(*this);
     detection_pipeline_.initialize(*this);
@@ -51,6 +64,8 @@ public:
     }
     running_ = false;
     vehicle_controller_.shutdown(*this);
+    media_capture_.shutdown();
+    terminal_keyboard_.close();
     viewer_ui_.shutdown();
   }
 
@@ -65,13 +80,16 @@ public:
     }
 
     if (frame.empty()) {
-      viewer_ui_.renderPlaceholder(vehicle_controller_, detection_pipeline_);
+      viewer_ui_.renderPlaceholder(
+        vehicle_controller_, detection_pipeline_, media_capture_.recordState());
       processViewerActions();
       return;
     }
 
     detection_pipeline_.processFrame(*this, frame);
-    viewer_ui_.renderFrame(frame, vehicle_controller_, detection_pipeline_);
+    media_capture_.update(frame);
+    viewer_ui_.renderFrame(
+      frame, vehicle_controller_, detection_pipeline_, media_capture_.recordState());
     processViewerActions();
   }
 
@@ -88,7 +106,11 @@ private:
 
   void processViewerActions()
   {
-    for (const KeyAction action : viewer_ui_.pollActions(*this)) {
+    std::vector<KeyAction> actions = terminal_keyboard_.pollActions();
+    const auto window_actions = viewer_ui_.pollWindowActions(*this);
+    actions.insert(actions.end(), window_actions.begin(), window_actions.end());
+
+    for (const KeyAction action : actions) {
       switch (action) {
         case KeyAction::ToggleDetector:
           RCLCPP_INFO(
@@ -97,6 +119,15 @@ private:
           break;
         case KeyAction::Help:
           printHelp();
+          break;
+        case KeyAction::CapturePhoto:
+          handleCapturePhoto();
+          break;
+        case KeyAction::ToggleVideoRecord:
+          handleToggleVideoRecord();
+          break;
+        case KeyAction::StopVideoRecord:
+          handleStopVideoRecord();
           break;
         case KeyAction::Quit:
           shutdown();
@@ -110,11 +141,51 @@ private:
     }
   }
 
+  void handleCapturePhoto()
+  {
+    cv::Mat frame;
+    {
+      std::scoped_lock<std::mutex> lock(frame_mutex_);
+      if (!latest_frame_.empty()) {
+        frame = latest_frame_.clone();
+      }
+    }
+
+    const auto path = media_capture_.capturePhoto(frame);
+    if (path.has_value()) {
+      RCLCPP_INFO(get_logger(), "Photo saved: %s", path->c_str());
+    } else {
+      RCLCPP_WARN(get_logger(), "Could not save photo: no frame available or write failed.");
+    }
+  }
+
+  void handleToggleVideoRecord()
+  {
+    cv::Mat frame;
+    {
+      std::scoped_lock<std::mutex> lock(frame_mutex_);
+      if (!latest_frame_.empty()) {
+        frame = latest_frame_.clone();
+      }
+    }
+    const std::string status = media_capture_.toggleVideoRecord(frame);
+    RCLCPP_INFO(get_logger(), "%s", status.c_str());
+  }
+
+  void handleStopVideoRecord()
+  {
+    const std::string status = media_capture_.stopVideoRecord();
+    RCLCPP_INFO(get_logger(), "%s", status.c_str());
+  }
+
   std::string image_topic_;
   bool running_{true};
+  bool terminal_keyboard_available_{false};
   DetectionPipeline detection_pipeline_;
+  MediaCapture media_capture_;
   VehicleController vehicle_controller_;
   ViewerUi viewer_ui_;
+  TerminalKeyboard terminal_keyboard_;
   std::mutex frame_mutex_;
   cv::Mat latest_frame_;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;

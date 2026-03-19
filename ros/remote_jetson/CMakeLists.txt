@@ -28,6 +28,7 @@ add_executable(picarx_remote_yolo_video_car
   src/picarx_remote_yolo_video_car.cpp
   src/yolo_video_car_shared.cpp
   src/detection_pipeline.cpp
+  src/media_capture.cpp
   src/vehicle_controller.cpp
   src/viewer_ui.cpp
 )

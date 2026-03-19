@@ -13,6 +13,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -58,6 +59,9 @@ enum class KeyAction
   Stop,
   SpeedUp,
   SpeedDown,
+  CapturePhoto,
+  ToggleVideoRecord,
+  StopVideoRecord,
   ToggleDetector,
   Help,
   Quit,

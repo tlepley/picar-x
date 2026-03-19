@@ -108,6 +108,18 @@ std::vector<KeyAction> TerminalKeyboard::pollActions()
         case ' ':
           actions.push_back(KeyAction::Stop);
           break;
+        case 't':
+        case 'T':
+          actions.push_back(KeyAction::CapturePhoto);
+          break;
+        case 'q':
+        case 'Q':
+          actions.push_back(KeyAction::ToggleVideoRecord);
+          break;
+        case 'e':
+        case 'E':
+          actions.push_back(KeyAction::StopVideoRecord);
+          break;
         case '+':
         case '=':
           actions.push_back(KeyAction::SpeedUp);

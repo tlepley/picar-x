@@ -71,6 +71,9 @@ void VehicleController::applyAction(KeyAction action)
       current_speed_ = std::max(current_speed_ - 5.0F, -static_cast<float>(max_speed_));
       publishDrive(current_speed_, current_steering_);
       break;
+    case KeyAction::CapturePhoto:
+    case KeyAction::ToggleVideoRecord:
+    case KeyAction::StopVideoRecord:
     case KeyAction::None:
     case KeyAction::ToggleDetector:
     case KeyAction::Help:

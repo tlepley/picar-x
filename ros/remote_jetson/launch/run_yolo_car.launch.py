@@ -19,7 +19,7 @@ def generate_launch_description() -> LaunchDescription:
             default_value='',
             description='Optional text file with one class name per line.',
         ),
-        LogInfo(msg='Native C++ video-car controls: arrows drive, space stop, +/- speed, f toggle detector, x/esc quit.'),
+        LogInfo(msg='Native C++ video-car controls: arrows drive, space stop, +/- speed, t photo, q rec/pause, e rec stop, f detector, x/esc quit.'),
         Node(
             package='picarx_remote_jetson_ros2',
             executable='picarx_remote_yolo_video_car',

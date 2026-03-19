@@ -1,5 +1,91 @@
 #include "viewer_ui.hpp"
 
+namespace
+{
+KeyAction decodeWindowKey(int key)
+{
+  const int normalized_ascii = key & 0xFF;
+  const int normalized_x11_keysym = key & 0xFFFF;
+
+  switch (key) {
+    case kArrowUp:
+    case 82:
+    case 65362:
+      return KeyAction::Forward;
+    case kArrowDown:
+    case 84:
+    case 65364:
+      return KeyAction::Backward;
+    case kArrowLeft:
+    case 81:
+    case 65361:
+      return KeyAction::Left;
+    case kArrowRight:
+    case 83:
+    case 65363:
+      return KeyAction::Right;
+    default:
+      break;
+  }
+
+  switch (normalized_x11_keysym) {
+    case 0xFF52:
+      return KeyAction::Forward;
+    case 0xFF54:
+      return KeyAction::Backward;
+    case 0xFF51:
+      return KeyAction::Left;
+    case 0xFF53:
+      return KeyAction::Right;
+    case 0xFF1B:
+      return KeyAction::Quit;
+    case 0xFF0D:
+    case 0xFF8D:
+      return KeyAction::Stop;
+    case 0xFFAB:
+      return KeyAction::SpeedUp;
+    case 0xFFAD:
+      return KeyAction::SpeedDown;
+    default:
+      break;
+  }
+
+  switch (normalized_ascii) {
+    case ' ':
+    case '\r':
+    case '\n':
+      return KeyAction::Stop;
+    case 't':
+    case 'T':
+      return KeyAction::CapturePhoto;
+    case 'q':
+    case 'Q':
+      return KeyAction::ToggleVideoRecord;
+    case 'e':
+    case 'E':
+      return KeyAction::StopVideoRecord;
+    case '+':
+    case '=':
+      return KeyAction::SpeedUp;
+    case '-':
+    case '_':
+      return KeyAction::SpeedDown;
+    case 'f':
+    case 'F':
+      return KeyAction::ToggleDetector;
+    case 'h':
+    case 'H':
+      return KeyAction::Help;
+    case 'x':
+    case 'X':
+    case 27:
+      return KeyAction::Quit;
+    default:
+      return KeyAction::None;
+  }
+}
+}  // namespace
+
 void ViewerUi::configure(rclcpp::Node & node)
 {
   enabled_ = node.declare_parameter<bool>("enable_viewer", true);
@@ -7,22 +93,13 @@ void ViewerUi::configure(rclcpp::Node & node)
   show_fps_ = node.declare_parameter<bool>("show_fps", true);
 }
 
-void ViewerUi::initialize(rclcpp::Node & node)
+void ViewerUi::initialize(rclcpp::Node &)
 {
   if (!enabled_) {
     return;
   }
-  terminal_keyboard_available_ = terminal_keyboard_.open();
-  if (terminal_keyboard_available_) {
-    RCLCPP_INFO(
-      node.get_logger(),
-      "Terminal keyboard capture enabled. Keep the launch terminal focused for reliable arrow keys.");
-  } else {
-    RCLCPP_WARN(
-      node.get_logger(),
-      "Terminal keyboard capture unavailable; falling back to OpenCV window key handling.");
-  }
   cv::namedWindow(window_name_, cv::WINDOW_AUTOSIZE);
+  RCLCPP_INFO(rclcpp::get_logger("ViewerUi"), "OpenCV HighGUI backend: GTK2");
 }
 
 void ViewerUi::shutdown()
@@ -30,7 +107,6 @@ void ViewerUi::shutdown()
   if (!enabled_) {
     return;
   }
-  terminal_keyboard_.close();
   try {
     cv::destroyWindow(window_name_);
   } catch (const cv::Exception &) {
@@ -45,76 +121,44 @@ bool ViewerUi::enabled() const
 void ViewerUi::printHelp(rclcpp::Node & node) const
 {
   if (!enabled_) {
-    RCLCPP_INFO(node.get_logger(), "Viewer disabled. Manual keyboard teleoperation is unavailable.");
+    RCLCPP_INFO(
+      node.get_logger(),
+      "Viewer disabled. Terminal keyboard teleoperation may still be available in the shell.");
     return;
   }
   RCLCPP_INFO(
     node.get_logger(),
-    "Controls: arrows in terminal or OpenCV window, space stop, +/- speed, f toggle detector, h help, x/esc quit.");
+    "Controls: arrows drive, space stop, +/- speed, t photo, q rec/pause, e rec stop, f detector, h help, x/esc quit.");
 }
 
-std::vector<KeyAction> ViewerUi::pollActions(rclcpp::Node & node)
+std::vector<KeyAction> ViewerUi::pollWindowActions(rclcpp::Node & node)
 {
   std::vector<KeyAction> actions;
   if (!enabled_) {
     return actions;
   }
 
-  actions = terminal_keyboard_.pollActions();
   const int key = cv::waitKeyEx(1);
   if (key < 0) {
     return actions;
   }
 
-  switch (key) {
-    case kArrowUp:
-      actions.push_back(KeyAction::Forward);
-      return actions;
-    case kArrowDown:
-      actions.push_back(KeyAction::Backward);
-      return actions;
-    case kArrowLeft:
-      actions.push_back(KeyAction::Left);
-      return actions;
-    case kArrowRight:
-      actions.push_back(KeyAction::Right);
-      return actions;
-    case ' ':
-      actions.push_back(KeyAction::Stop);
-      return actions;
-    case '+':
-    case '=':
-      actions.push_back(KeyAction::SpeedUp);
-      return actions;
-    case '-':
-    case '_':
-      actions.push_back(KeyAction::SpeedDown);
-      return actions;
-    case 'f':
-    case 'F':
-      actions.push_back(KeyAction::ToggleDetector);
-      return actions;
-    case 'h':
-    case 'H':
-      actions.push_back(KeyAction::Help);
-      return actions;
-    case 'x':
-    case 'X':
-    case 27:
-      actions.push_back(KeyAction::Quit);
-      return actions;
-    default:
-      RCLCPP_INFO_THROTTLE(
-        node.get_logger(), *node.get_clock(), 2000,
-        "Unhandled OpenCV key code: %d", key);
-      return actions;
+  const KeyAction action = decodeWindowKey(key);
+  if (action == KeyAction::None) {
+    RCLCPP_INFO_THROTTLE(
+      node.get_logger(), *node.get_clock(), 2000,
+      "Unhandled OpenCV key code: %d", key);
+    return actions;
   }
+  actions.push_back(action);
+  return actions;
 }
 
 void ViewerUi::renderFrame(
   cv::Mat & frame,
   const VehicleController & controller,
-  const DetectionPipeline & pipeline)
+  const DetectionPipeline & pipeline,
+  const std::string & record_state)
 {
   if (!enabled_) {
     return;
@@ -130,13 +174,14 @@ void ViewerUi::renderFrame(
       cv::FONT_HERSHEY_SIMPLEX, 0.55, cv::Scalar(0, 220, 255), 2);
   }
 
-  drawStatusText(frame, controller, pipeline.getStats());
+  drawStatusText(frame, controller, pipeline.getStats(), record_state);
   cv::imshow(window_name_, frame);
 }
 
 void ViewerUi::renderPlaceholder(
   const VehicleController & controller,
-  const DetectionPipeline & pipeline)
+  const DetectionPipeline & pipeline,
+  const std::string & record_state)
 {
   if (!enabled_) {
     return;
@@ -149,14 +194,15 @@ void ViewerUi::renderPlaceholder(
   cv::putText(
     placeholder, "Launch the local hardware stack on the car first.", {24, 120},
     cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(180, 180, 180), 1);
-  drawStatusText(placeholder, controller, pipeline.getStats());
+  drawStatusText(placeholder, controller, pipeline.getStats(), record_state);
   cv::imshow(window_name_, placeholder);
 }
 
 void ViewerUi::drawStatusText(
   cv::Mat & frame,
   const VehicleController & controller,
-  const DetectionPipelineStats & stats)
+  const DetectionPipelineStats & stats,
+  const std::string & record_state)
 {
   std::ostringstream line1;
   line1 << "speed=" << controller.currentSpeed()
@@ -173,7 +219,8 @@ void ViewerUi::drawStatusText(
   line2 << " task=" << stats.model_task;
   line2 << " decoder=" << stats.decoder;
   line2 << " boxes=" << stats.display_detection_count
-        << " tracks=" << stats.track_count;
+        << " tracks=" << stats.track_count
+        << " rec=" << record_state;
   cv::putText(
     frame, line2.str(), {16, 56}, cv::FONT_HERSHEY_SIMPLEX, 0.6,
     cv::Scalar(200, 200, 200), 2);
@@ -210,6 +257,6 @@ void ViewerUi::drawStatusText(
   }
 
   cv::putText(
-    frame, "terminal arrows drive | space stop | +/- speed | f detector | x quit",
+    frame, "arrows drive | space stop | +/- speed | t photo | q/e video | f detector | x quit",
     {16, frame.rows - 18}, cv::FONT_HERSHEY_SIMPLEX, 0.55, cv::Scalar(0, 255, 255), 2);
 }
