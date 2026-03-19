@@ -21,7 +21,8 @@ private:
   std::string engine_path_;
   std::string classes_path_;
   ModelTask model_task_{ModelTask::Detect};
-  std::string yolo_variant_{"ultralytics"};
+  std::string yolo_variant_{"yolov8"};
+  std::string decoder_name_{"ultralytics"};
   int input_width_{640};
   int input_height_{640};
   int detect_every_n_frames_{2};
@@ -38,6 +39,7 @@ private:
   std::size_t frame_counter_{0};
   double last_inference_ms_{0.0};
   std::string backend_in_use_{"TensorRT"};
+  std::string model_name_;
   int next_track_id_{1};
   TensorRtYoloEngine detector_;
   std::vector<std::string> classes_;

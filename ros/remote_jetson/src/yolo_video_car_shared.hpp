@@ -114,6 +114,7 @@ struct DetectionPipelineStats
   bool detector_ready{false};
   bool detector_enabled{false};
   std::string backend_in_use{"TensorRT"};
+  std::string model_name;
   std::string model_task{"detect"};
   std::string decoder{"ultralytics"};
   int detect_every_n_frames{1};

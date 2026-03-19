@@ -446,8 +446,8 @@ double TensorRtYoloEngine::lastInferenceMs() const
 std::string TensorRtYoloEngine::runtimeName() const
 {
   std::ostringstream out;
-  out << "TensorRT";
-  out << (output_dtype_ == nvinfer1::DataType::kHALF ? " fp16" : " fp32");
+  out << "engine=TensorRT output="
+      << (output_dtype_ == nvinfer1::DataType::kHALF ? "fp16" : "fp32");
   return out.str();
 }
 

@@ -3,10 +3,11 @@
 void DetectionPipeline::configure(rclcpp::Node & node)
 {
   engine_path_ = node.declare_parameter<std::string>("engine_path", "");
+  model_name_ = std::filesystem::path(engine_path_).stem().string();
   classes_path_ = node.declare_parameter<std::string>("classes_path", "");
   model_task_ = parseModelTask(node.declare_parameter<std::string>("model_task", "detect"));
-  yolo_variant_ = detectDecoderName(
-    parseDetectDecoder(node.declare_parameter<std::string>("yolo_variant", "yolov8")));
+  yolo_variant_ = toLowerCopy(trim(node.declare_parameter<std::string>("yolo_variant", "yolov8")));
+  decoder_name_ = detectDecoderName(parseDetectDecoder(yolo_variant_));
   input_width_ = node.declare_parameter<int>("input_width", 640);
   input_height_ = node.declare_parameter<int>("input_height", 640);
   detect_every_n_frames_ = std::max(
@@ -118,8 +119,9 @@ DetectionPipelineStats DetectionPipeline::getStats() const
   stats.detector_ready = detector_ready_;
   stats.detector_enabled = detector_enabled_;
   stats.backend_in_use = backend_in_use_;
+  stats.model_name = model_name_;
   stats.model_task = modelTaskName(model_task_);
-  stats.decoder = yolo_variant_;
+  stats.decoder = decoder_name_ + "/" + yolo_variant_;
   stats.detect_every_n_frames = detect_every_n_frames_;
   stats.last_inference_ms = last_inference_ms_;
   stats.raw_detection_count = last_raw_detections_.size();

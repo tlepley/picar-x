@@ -223,7 +223,7 @@ cv::Mat ViewerUi::buildStatusPanel(
   const VehicleController & controller,
   const DetectionPipelineStats & stats)
 {
-  constexpr int kPanelHeight = 168;
+  constexpr int kPanelHeight = 216;
   cv::Mat panel(kPanelHeight, width, CV_8UC3, cv::Scalar(24, 24, 24));
   cv::line(panel, {0, 0}, {width, 0}, cv::Scalar(60, 60, 60), 1);
 
@@ -235,22 +235,30 @@ cv::Mat ViewerUi::buildStatusPanel(
     cv::Scalar(255, 255, 255), 1);
 
   std::ostringstream line2;
-  line2 << "stream=" << width << "x" << height
-        << " detector=" << (stats.detector_enabled ? "on" : "off");
+  line2 << "stream=" << width << "x" << height;
   if (stats.detector_ready) {
-    line2 << " backend=" << stats.backend_in_use;
+    line2 << " " << stats.backend_in_use;
   }
   cv::putText(
     panel, line2.str(), {16, 56}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
     cv::Scalar(200, 200, 200), 1);
 
-  std::ostringstream lineDetection;
-  lineDetection << "boxes=" << stats.display_detection_count
-                << " tracks=" << stats.track_count
-                << " task=" << stats.model_task
-                << " decoder=" << stats.decoder;
+  std::ostringstream lineModel;
+  if (!stats.model_name.empty()) {
+    lineModel << "model=" << stats.model_name;
+    if (!stats.decoder.empty()) {
+      lineModel << " (" << stats.decoder << ")";
+    }
+  }
   cv::putText(
-    panel, lineDetection.str(), {16, 80}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
+    panel, lineModel.str(), {16, 80}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
+    cv::Scalar(200, 200, 200), 1);
+
+  std::ostringstream lineDetection;
+  lineDetection << "detector=" << (stats.detector_enabled ? "on" : "off")
+                << " tracked_objects=" << stats.display_detection_count;
+  cv::putText(
+    panel, lineDetection.str(), {16, 104}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
     cv::Scalar(200, 200, 200), 1);
 
   if (show_fps_) {
@@ -274,7 +282,7 @@ cv::Mat ViewerUi::buildStatusPanel(
           << " detect_sched=" << std::fixed << std::setprecision(1) << scheduled_detect_fps
           << "fps";
     cv::putText(
-      panel, line3.str(), {16, 108}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
+      panel, line3.str(), {16, 132}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
       cv::Scalar(200, 200, 200), 1);
 
     std::ostringstream line4;
@@ -282,7 +290,7 @@ cv::Mat ViewerUi::buildStatusPanel(
           << "ms yolo_potential=" << std::fixed << std::setprecision(1) << yolo_potential_fps
           << "fps";
     cv::putText(
-      panel, line4.str(), {16, 132}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
+      panel, line4.str(), {16, 156}, cv::FONT_HERSHEY_SIMPLEX, 0.5,
       cv::Scalar(200, 200, 200), 1);
   }
 
