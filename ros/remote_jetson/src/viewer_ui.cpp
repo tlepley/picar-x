@@ -55,11 +55,11 @@ KeyAction decodeWindowKey(int key)
     case '\r':
     case '\n':
       return KeyAction::Stop;
-    case 't':
-    case 'T':
+    case 'p':
+    case 'P':
       return KeyAction::CapturePhoto;
-    case 'q':
-    case 'Q':
+    case 'v':
+    case 'V':
       return KeyAction::ToggleVideoRecord;
     case 'e':
     case 'E':
@@ -76,6 +76,8 @@ KeyAction decodeWindowKey(int key)
     case 'h':
     case 'H':
       return KeyAction::Help;
+    case 'q':
+    case 'Q':
     case 'x':
     case 'X':
     case 27:
@@ -128,7 +130,7 @@ void ViewerUi::printHelp(rclcpp::Node & node) const
   }
   RCLCPP_INFO(
     node.get_logger(),
-    "Controls: arrows drive, space stop, +/- speed, t photo, q rec/pause, e rec stop, f detector, h help, x/esc quit.");
+    "Controls: arrows drive, space stop, +/- speed, p photo, v rec/pause, e rec stop, f detector, h help, q/esc quit.");
 }
 
 std::vector<KeyAction> ViewerUi::pollWindowActions(rclcpp::Node & node)
@@ -295,7 +297,7 @@ cv::Mat ViewerUi::buildStatusPanel(
   }
 
   cv::putText(
-    panel, "arrows drive | space stop | +/- speed | t photo | q/e video | f detector | x quit",
+    panel, "arrows drive | space stop | +/- speed | p photo | v/e video | f detector | q quit",
     {16, panel.rows - 14}, cv::FONT_HERSHEY_SIMPLEX, 0.47, cv::Scalar(0, 255, 255), 1);
 
   return panel;
